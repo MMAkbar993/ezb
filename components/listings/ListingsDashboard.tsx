@@ -1,0 +1,211 @@
+'use client'
+
+import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
+import { Listing, fetchListings, createListing, updateListing, deleteListing, fmtMoney, LISTING_STATUSES } from '@/lib/listings'
+import { useToast } from '@/components/ui/Toast'
+import { LoadingState, EmptyState, Card, Badge } from '@/components/ui'
+import ListingFormModal from './ListingFormModal'
+import { queueAutoPosts } from '@/lib/services/social'
+import { supabase } from '@/lib/supabase/client'
+
+export default function ListingsDashboard() {
+  const toast = useToast()
+  const [listings, setListings] = useState<Listing[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [editing, setEditing] = useState<Listing | null>(null)
+  const [statusFilter, setStatusFilter] = useState('all')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      setListings(await fetchListings())
+    } catch (e: any) {
+      toast(e.message, 'error')
+    } finally {
+      setLoading(false)
+    }
+  }, [toast])
+
+  useEffect(() => { load() }, [load])
+
+  const handleSubmit = async (input: Partial<Listing>) => {
+    if (editing) {
+      await updateListing(editing.id, input)
+      toast('Listing updated', 'success')
+    } else {
+      const created = await createListing(input)
+      toast('Listing created', 'success')
+      // Auto-post to connected social platforms on new listing upload (fire-and-forget).
+      try {
+        const { data } = await supabase.auth.getUser()
+        if (data.user?.id) {
+          const queued = await queueAutoPosts(data.user.id, {
+            id: created.id,
+            business_name: created.business_name,
+            headline: created.headline,
+            industry: created.industry,
+            location_general: created.location_general,
+            asking_price: created.asking_price,
+            annual_revenue: created.annual_revenue,
+            sde: created.sde,
+            image_urls: created.image_urls,
+            primary_image_url: created.primary_image_url,
+          })
+          if (queued.length > 0) {
+            toast(`Social: queued ${queued.length} post(s)`, 'success')
+          }
+        }
+      } catch {
+        // Auto-post failure should never block listing creation.
+      }
+    }
+    setShowForm(false)
+    setEditing(null)
+    await load()
+  }
+
+  const handleDelete = async (listing: Listing) => {
+    if (!confirm(`Delete listing "${listing.business_name}"?`)) return
+    try {
+      await deleteListing(listing.id)
+      toast('Listing deleted', 'success')
+      await load()
+    } catch (e: any) {
+      toast(e.message, 'error')
+    }
+  }
+
+  const handleStatus = async (listing: Listing, status: string) => {
+    setListings((p) => p.map((l) => (l.id === listing.id ? { ...l, status } : l)))
+    try {
+      await updateListing(listing.id, { status })
+      toast(`Status → ${status}`, 'success')
+    } catch (e: any) {
+      toast(e.message, 'error')
+    }
+  }
+
+  const filtered = statusFilter === 'all' ? listings : listings.filter((l) => l.status === statusFilter)
+  const statusColor = (s?: string | null) =>
+    s === 'active' ? '#22c55e' : s === 'under_contract' ? '#f59e0b' : s === 'sold' ? '#3b82f6' : s === 'draft' ? '#94a3b8' : '#64748b'
+
+  return (
+    <div>
+      <header style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 24, flexWrap: 'wrap', gap: 12 }}>
+        <div>
+          <h1 style={{ margin: 0, fontSize: 26 }}>Listings</h1>
+          <p style={{ margin: '4px 0 0', color: 'var(--muted)', fontSize: 14 }}>
+            {listings.length} total · {listings.filter((l) => l.status === 'active').length} active
+          </p>
+        </div>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button className="btn btn-ghost" onClick={load}>↻ Refresh</button>
+          <button className="btn btn-primary" onClick={() => { setEditing(null); setShowForm(true) }}>+ New Listing</button>
+        </div>
+      </header>
+
+      {/* Status filter */}
+      <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+        <FilterPill active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>All</FilterPill>
+        {LISTING_STATUSES.map((s) => (
+          <FilterPill key={s} active={statusFilter === s} onClick={() => setStatusFilter(s)}>{s.replace(/_/g, ' ')}</FilterPill>
+        ))}
+      </div>
+
+      {loading ? <LoadingState /> : null}
+
+      {!loading && filtered.length === 0 ? (
+        <EmptyState icon="🏢" title="No listings found" subtitle="Create a listing to get started." />
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(320px, 1fr))', gap: 14 }}>
+          {!loading && filtered.map((listing) => (
+            <Card key={listing.id} style={{ overflow: 'hidden' }}>
+              {/* Image */}
+              <div style={{ height: 140, background: 'var(--navy)', position: 'relative' }}>
+                {listing.primary_image_url ? (
+                  <img src={listing.primary_image_url} alt={listing.business_name || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--gold-light)', fontSize: 32 }}>🏢</div>
+                )}
+                <div style={{ position: 'absolute', top: 10, left: 10 }}>
+                  <Badge color={statusColor(listing.status)}>{listing.status || 'draft'}</Badge>
+                </div>
+              </div>
+
+              <div style={{ padding: 16 }}>
+                <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 700, fontSize: 16, color: 'var(--navy)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                      {listing.business_name || 'Unnamed listing'}
+                    </div>
+                    <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 2 }}>
+                      {listing.industry || ''}{listing.location_general ? ` · ${listing.location_general}` : ''}
+                    </div>
+                  </div>
+                  <div style={{ fontWeight: 700, color: 'var(--gold-dark)', fontSize: 15, whiteSpace: 'nowrap' }}>{fmtMoney(listing.asking_price)}</div>
+                </div>
+
+                {listing.headline && (
+                  <div style={{ fontSize: 13, color: 'var(--muted)', marginTop: 8, lineHeight: 1.4, display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>
+                    {listing.headline}
+                  </div>
+                )}
+
+                {/* Metrics */}
+                <div style={{ display: 'flex', gap: 16, marginTop: 12, fontSize: 12, color: 'var(--muted)' }}>
+                  <span>Rev {listing.annual_revenue ? fmtMoney(listing.annual_revenue) : '—'}</span>
+                  <span>SDE {listing.sde ? fmtMoney(listing.sde) : '—'}</span>
+                  {listing.ebitda ? <span>EBITDA {fmtMoney(listing.ebitda)}</span> : null}
+                </div>
+
+                {/* Actions */}
+                <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                  <Link href={`/cim?listing=${listing.id}`} className="btn btn-navy" style={{ flex: 1, justifyContent: 'center', padding: '8px 10px', fontSize: 13 }}>📑 CIM</Link>
+                  <Link href={`/bov?listing=${listing.id}`} className="btn btn-navy" style={{ flex: 1, justifyContent: 'center', padding: '8px 10px', fontSize: 13 }}>⚖️ BOV</Link>
+                  <button className="btn btn-ghost" onClick={() => { setEditing(listing); setShowForm(true) }}>✎</button>
+                  <button className="btn btn-danger" onClick={() => handleDelete(listing)}>🗑</button>
+                </div>
+
+                {/* Status change */}
+                <select
+                  className="select"
+                  value={listing.status || 'draft'}
+                  onChange={(e) => handleStatus(listing, e.target.value)}
+                  style={{ marginTop: 10, fontSize: 13 }}
+                >
+                  {LISTING_STATUSES.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                </select>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+
+      {showForm && (
+        <ListingFormModal
+          listing={editing}
+          onClose={() => { setShowForm(false); setEditing(null) }}
+          onSubmit={handleSubmit}
+        />
+      )}
+    </div>
+  )
+}
+
+function FilterPill({ children, active, onClick }: { children: React.ReactNode; active: boolean; onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        padding: '7px 14px', borderRadius: 999, cursor: 'pointer', fontFamily: 'Georgia, serif', fontSize: 13, fontWeight: 600,
+        border: active ? '2px solid var(--gold-dark)' : '1px solid var(--line)',
+        background: active ? 'rgba(201,168,76,0.15)' : '#fff',
+        color: active ? 'var(--gold-dark)' : 'var(--muted)',
+      }}
+    >
+      {children}
+    </button>
+  )
+}
