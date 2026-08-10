@@ -1,7 +1,15 @@
 import { createClient } from '@supabase/supabase-js'
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+// Falls back to an inert placeholder when env vars are unset so this module
+// NEVER throws at import time — `createClient()` throws synchronously on an
+// empty URL, which crashes `next build`'s page-data-collection step (and any
+// server-render) for every file that imports `supabase` at module scope, not
+// just the caller. With a placeholder, any real query instead fails at the
+// network layer and returns the usual `{ data: null, error }` shape that
+// every caller in this codebase already handles gracefully. When the real
+// env vars ARE set (the normal case), behavior is unchanged.
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://placeholder.invalid'
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'placeholder-anon-key'
 
 // Check if we're using the new publishable key format (starts with sb_)
 const isPublishableKey = supabaseAnonKey.startsWith('sb_')
@@ -21,8 +29,3 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
     },
   } : undefined,
 })
-
-// For debugging
-console.log('🔑 Supabase client initialized with key type:', 
-  isPublishableKey ? 'Publishable (sb_)' : 'Legacy (eyJ)'
-)
