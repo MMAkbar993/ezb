@@ -10,13 +10,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import MultiFileDropzone from '@/components/financial/MultiFileDropzone'
-import { fetchDealOptions, getAccessToken } from '@/lib/financialFiles'
+import { fetchDealOptions, getAccessToken, type DealOption } from '@/lib/financialFiles'
 import type { AutoGenerateResult } from '@/lib/autoGenerateTypes'
-
-interface Option {
-  id: string
-  title: string
-}
 
 interface Props {
   onGenerated: (result: AutoGenerateResult) => void
@@ -24,7 +19,7 @@ interface Props {
 }
 
 export default function OneClickUpload({ onGenerated, activeParentId }: Props) {
-  const [options, setOptions] = useState<Option[]>([])
+  const [options, setOptions] = useState<DealOption[]>([])
   const [selected, setSelected] = useState('')
   const [running, setRunning] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
@@ -46,13 +41,11 @@ export default function OneClickUpload({ onGenerated, activeParentId }: Props) {
 
   useEffect(() => { loadOptions() }, [loadOptions])
 
-  const selectedTitle = useMemo(() => {
-    const o = options.find((x) => x.id === selected)
-    return o?.title || ''
-  }, [options, selected])
+  const selectedOption = useMemo(() => options.find((x) => x.id === selected) || null, [options, selected])
+  const selectedTitle = selectedOption?.title || ''
 
   const generate = async () => {
-    if (!selected || running) return
+    if (!selectedOption || running) return
     setRunning(true)
     setStatus('Running Recast → BOV → CIM → BLI…')
     setError(null)
@@ -62,7 +55,9 @@ export default function OneClickUpload({ onGenerated, activeParentId }: Props) {
       const res = await fetch('/api/financial/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({ listingId: selected }),
+        // Always the real listing id — `selected` is the dropdown's key,
+        // which is a deal id for deal-backed options (see DealOption).
+        body: JSON.stringify({ listingId: selectedOption.listingId, dealId: selectedOption.dealId }),
       })
       const data = (await res.json()) as AutoGenerateResult
       if (!data.ok) {
@@ -100,8 +95,8 @@ export default function OneClickUpload({ onGenerated, activeParentId }: Props) {
       {/* Single upload surface */}
       <MultiFileDropzone
         parentId={selected || 'general'}
-        dealId={selected || null}
-        listingId={selected || null}
+        dealId={selectedOption?.dealId ?? null}
+        listingId={selectedOption?.listingId ?? null}
         onUploaded={() => {}}
       />
 
@@ -124,7 +119,7 @@ export default function OneClickUpload({ onGenerated, activeParentId }: Props) {
         </div>
         <button
           onClick={generate}
-          disabled={!selected || running}
+          disabled={!selectedOption || running}
           style={{
             background: 'var(--gold)', color: 'var(--navy)', border: 'none', borderRadius: 9,
             padding: '11px 20px', fontWeight: 800, fontSize: 14, cursor: 'pointer',

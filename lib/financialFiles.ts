@@ -171,7 +171,17 @@ export async function fetchFinancialFiles(): Promise<FinancialDoc[]> {
   return (data || []) as FinancialDoc[]
 }
 
-export async function fetchDealOptions(): Promise<{ id: string; title: string }[]> {
+export interface DealOption {
+  /** Unique key for this dropdown option — a deal id when the listing has a
+   * deal, otherwise the listing id itself. NOT necessarily a listing id —
+   * always use `listingId` below for anything that queries `listings`. */
+  id: string
+  listingId: string
+  dealId: string | null
+  title: string
+}
+
+export async function fetchDealOptions(): Promise<DealOption[]> {
   const [dealsRes, listingsRes] = await Promise.allSettled([
     supabase.from('deals').select('id, listing_id, title').limit(200),
     supabase.from('listings').select('id, business_name').limit(200),
@@ -186,16 +196,22 @@ export async function fetchDealOptions(): Promise<{ id: string; title: string }[
 
   const listingName = new Map(listings.map((l) => [l.id, l.business_name || 'Untitled Listing']))
 
-  const opts = deals.map((d) => ({
-    id: d.id,
-    title: d.title || listingName.get(d.listing_id) || `Deal ${d.id.slice(0, 8)}`,
-  }))
+  // Only surface deals that actually resolve to a real listing — a deal
+  // whose listing_id is missing/orphaned can't be used to generate anything.
+  const opts: DealOption[] = deals
+    .filter((d) => d.listing_id && listingName.has(d.listing_id))
+    .map((d) => ({
+      id: d.id,
+      listingId: d.listing_id,
+      dealId: d.id,
+      title: d.title || listingName.get(d.listing_id) || `Deal ${d.id.slice(0, 8)}`,
+    }))
 
   // Also surface standalone listings that have no deal yet
   const listedIds = new Set(deals.map((d) => d.listing_id).filter(Boolean))
   for (const l of listings) {
     if (!listedIds.has(l.id)) {
-      opts.push({ id: l.id, title: `${l.business_name || 'Untitled Listing'} (Listing)` })
+      opts.push({ id: l.id, listingId: l.id, dealId: null, title: `${l.business_name || 'Untitled Listing'} (Listing)` })
     }
   }
 

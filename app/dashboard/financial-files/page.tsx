@@ -24,7 +24,7 @@ import type { FinancialIntelligence } from '@/lib/ai/types'
 import type { FinancialSummaryReport } from '@/lib/ai/summaryGenerator'
 import {
   FinancialDoc, fetchFinancialFiles, fetchDealOptions,
-  deleteFinancialFile, getUserId, getAccessToken,
+  deleteFinancialFile, getUserId, getAccessToken, type DealOption,
 } from '@/lib/financialFiles'
 
 export default function FinancialFilesPage() {
@@ -39,12 +39,10 @@ export default function FinancialFilesPage() {
   )
 }
 
-interface DealOpt { id: string; title: string }
-
 function FinancialFilesDashboard() {
   const toast = useToast()
   const [files, setFiles] = useState<FinancialDoc[]>([])
-  const [deals, setDeals] = useState<DealOpt[]>([])
+  const [deals, setDeals] = useState<DealOption[]>([])
   const [loading, setLoading] = useState(true)
   const [deleting, setDeleting] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<FinancialDoc | null>(null)
@@ -98,6 +96,11 @@ function FinancialFilesDashboard() {
   const runPipeline = useCallback(async (forParent?: string) => {
     const id = forParent || selectedParent
     if (!id) { toast('Select a listing / deal first', 'info'); return }
+    // `id` is the dropdown's key (a deal id for deal-backed options) — resolve
+    // the real listing id before calling the API.
+    const opt = deals.find((d) => d.id === id)
+    const listingId = opt?.listingId ?? id
+    const dealId = opt?.dealId ?? null
     setRunning(true)
     try {
       const token = await getAccessToken()
@@ -105,7 +108,7 @@ function FinancialFilesDashboard() {
       const res = await fetch('/api/financial/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        body: JSON.stringify({ listingId: id }),
+        body: JSON.stringify({ listingId, dealId }),
       })
       const data = (await res.json()) as AutoGenerateResult
       if (!data.ok) throw new Error(data.error || 'Generation failed')
@@ -117,7 +120,7 @@ function FinancialFilesDashboard() {
     } finally {
       setRunning(false)
     }
-  }, [selectedParent, toast, load])
+  }, [selectedParent, deals, toast, load])
 
   const onDelete = async (doc: FinancialDoc) => {
     setDeleting(doc.id)

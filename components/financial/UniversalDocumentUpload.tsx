@@ -13,7 +13,7 @@ import {
   UNIVERSAL_TYPE_SHORT_LABELS,
 } from '@/lib/financialExtractor'
 import { UNIVERSAL_DOC_TYPE_INFO, type UniversalDocType } from '@/lib/ai/types'
-import { getAccessToken, fetchDealOptions, uploadFinancialFiles, formatBytes } from '@/lib/financialFiles'
+import { getAccessToken, fetchDealOptions, uploadFinancialFiles, formatBytes, type DealOption } from '@/lib/financialFiles'
 import type { FinancialIntelligence } from '@/lib/ai/types'
 import type { FinancialSummaryReport } from '@/lib/ai/summaryGenerator'
 import type { AiExtractionOutput } from '../../lib/ai/financialExtractor'
@@ -31,7 +31,7 @@ export default function UniversalDocumentUpload({
 }: {
   onAnalyzed?: (r: AnalyzeResponse) => void
 }) {
-  const [deals, setDeals] = useState<{ id: string; title: string }[]>([])
+  const [deals, setDeals] = useState<DealOption[]>([])
   const [selected, setSelected] = useState('')
   const [queue, setQueue] = useState<File[]>([])
   const [busy, setBusy] = useState<'upload' | 'analyze' | null>(null)
@@ -85,15 +85,17 @@ export default function UniversalDocumentUpload({
     planning: '🧠 Planning',
   }
 
+  const selectedOption = useMemo(() => deals.find((d) => d.id === selected) || null, [deals, selected])
+
   const run = useCallback(async () => {
-    if (!selected) { setError('Select a listing / deal to attach the analysis to.'); return }
+    if (!selectedOption) { setError('Select a listing / deal to attach the analysis to.'); return }
     if (!queue.length) { setError('Add at least one document first.'); return }
     const token = await getAccessToken()
     if (!token) { setError('You must be signed in to analyze documents.'); return }
 
     setBusy('upload'); setError(null); setStep(`Uploading ${queue.length} document(s)…`)
     const upload = await uploadFinancialFiles(
-      { dealId: null, listingId: selected, parentId: selected },
+      { dealId: selectedOption.dealId, listingId: selectedOption.listingId, parentId: selected },
       queue,
       (p) => setProgress(p.map((x) => ({ fileName: x.fileName, percent: x.percent }))),
     )
@@ -103,8 +105,8 @@ export default function UniversalDocumentUpload({
     try {
       const res = await fetch('/api/financial/intelligence', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: '***' + token },
-        body: JSON.stringify({ listingId: selected }),
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ listingId: selectedOption.listingId }),
       })
       const data = (await res.json()) as AnalyzeResponse
       if (!data.ok) throw new Error(data.error || 'Analysis failed')
