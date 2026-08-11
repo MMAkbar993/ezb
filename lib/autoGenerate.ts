@@ -225,11 +225,19 @@ export async function runAutoGeneration(input: {
   const artifacts: GeneratedArtifact[] = []
   const notes: string[] = []
 
-  // 2) Load existing source financial docs for this listing
-  const { data: sourceDocs } = await supabase
+  // 2) Load existing source financial docs for this listing. `deal_id` is a
+  //    uuid column — only add the deal_id.eq clause when we actually have one
+  //    (a literal 'none' fallback previously caused a Postgres uuid-cast
+  //    error, 22P02, which silently emptied `sourceDocs` since the query
+  //    error wasn't checked — every real upload was being ignored).
+  const sourceFilter = dealId
+    ? `listing_id.eq.${input.listingId},deal_id.eq.${dealId}`
+    : `listing_id.eq.${input.listingId}`
+  const { data: sourceDocs, error: sourceErr } = await supabase
     .from('financial_documents')
     .select('*')
-    .or(`listing_id.eq.${input.listingId},deal_id.eq.${dealId ?? 'none'}`)
+    .or(sourceFilter)
+  if (sourceErr) notes.push(`Could not load source documents: ${sourceErr.message}`)
   const sources = ((sourceDocs as FinancialDoc[] | null) || []).filter((d) => d.category !== 'generated_document')
   const grouped = groupUploadedDocs(sources)
 

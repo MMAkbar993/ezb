@@ -12,15 +12,21 @@ import { isPlainTextType, truncateForClaude } from '@/lib/ai/documentAnalyzer'
 // Re-export the type predicate + truncator so the route stays thin.
 export { isPlainTextType, truncateForClaude }
 
-// Lazy, memoized pdf-parse (keeps module load cost off cold start hot path).
-let pdfParse: ((data: Buffer) => Promise<{ text: string }>) | null = null
+// Lazy-loaded pdf-parse v2 (keeps module load cost off cold start hot path).
+// v2 replaced the v1 callable-function API with a class: `new PDFParse({data})
+// .getText()`. (Confirmed against the actually-installed pdf-parse@2.4.5 —
+// the old `require('pdf-parse')(buffer)` call silently threw "not a
+// function" on every real PDF upload.)
+let PDFParseCtor: (new (opts: { data: Buffer }) => { getText(): Promise<{ text: string }> }) | null = null
 async function getPdfParser() {
-  if (!pdfParse) {
+  if (!PDFParseCtor) {
     const mod: any = await import('pdf-parse')
-    const fn = mod?.default || mod
-    pdfParse = (data: Buffer) => fn(data)
+    PDFParseCtor = mod.PDFParse
   }
-  return pdfParse
+  return async (data: Buffer) => {
+    const parser = new PDFParseCtor!({ data })
+    return parser.getText()
+  }
 }
 
 /**

@@ -31,7 +31,7 @@ export interface Listing {
   image_urls: string[] | null
   primary_image_url: string | null
   featured_image_url: string | null
-  // Real-estate option (see sql/document_compliance_realestate_schema.sql)
+  // Real-estate option (only populated when real_estate_included = true)
   property_value: number | null
   property_description: string | null
   square_footage: number | null
@@ -42,6 +42,12 @@ export interface Listing {
   property_state: string | null
   property_zip: string | null
   total_value: number | null
+  // Operational details (apply regardless of real_estate_included)
+  num_employees: number | null
+  num_owners: number | null
+  business_square_footage: number | null
+  lease_years_remaining: number | null
+  monthly_rent: number | null
 }
 
 export type ListingInput = Partial<Omit<Listing, 'id' | 'created_at' | 'updated_at'>>

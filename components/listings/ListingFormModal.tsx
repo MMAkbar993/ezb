@@ -21,7 +21,12 @@ interface FormState {
   ebitda: string
   reason_for_sale: string
   status: string
+  num_employees: string
+  num_owners: string
+  business_square_footage: string
   real_estate_included: boolean
+  lease_years_remaining: string
+  monthly_rent: string
   property_value: string
   property_description: string
   square_footage: string
@@ -48,7 +53,12 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
     ebitda: listing?.ebitda ? String(listing.ebitda) : '',
     reason_for_sale: listing?.reason_for_sale || '',
     status: listing?.status || 'active',
+    num_employees: listing?.num_employees != null ? String(listing.num_employees) : '',
+    num_owners: listing?.num_owners != null ? String(listing.num_owners) : '',
+    business_square_footage: listing?.business_square_footage != null ? String(listing.business_square_footage) : '',
     real_estate_included: listing?.real_estate_included || false,
+    lease_years_remaining: listing?.lease_years_remaining != null ? String(listing.lease_years_remaining) : '',
+    monthly_rent: listing?.monthly_rent != null ? String(listing.monthly_rent) : '',
     property_value: listing?.property_value ? String(listing.property_value) : '',
     property_description: listing?.property_description || '',
     square_footage: listing?.square_footage ? String(listing.square_footage) : '',
@@ -82,7 +92,12 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
         ebitda: numOrNull(form.ebitda),
         reason_for_sale: form.reason_for_sale || null,
         status: form.status,
+        num_employees: numOrNull(form.num_employees),
+        num_owners: numOrNull(form.num_owners),
+        business_square_footage: numOrNull(form.business_square_footage),
         real_estate_included: form.real_estate_included,
+        lease_years_remaining: !form.real_estate_included ? numOrNull(form.lease_years_remaining) : null,
+        monthly_rent: !form.real_estate_included ? numOrNull(form.monthly_rent) : null,
         property_value: form.real_estate_included ? numOrNull(form.property_value) : null,
         property_description: form.real_estate_included ? form.property_description.trim() || null : null,
         square_footage: form.real_estate_included ? numOrNull(form.square_footage) : null,
@@ -168,10 +183,44 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
             <input className="input" value={form.reason_for_sale} onChange={(e) => set('reason_for_sale', e.target.value)} placeholder="e.g. Owner retirement" />
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
-            <input type="checkbox" checked={form.real_estate_included} onChange={(e) => set('real_estate_included', e.target.checked)} />
-            <label style={{ fontSize: 14, color: 'var(--text)' }}>Real estate included in sale</label>
+          <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 16, marginBottom: 20 }}>
+            <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 1.2, color: 'var(--gold-dark)', fontWeight: 700, marginBottom: 12 }}>Business Operations</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+              <div>
+                <label className="label">Employees</label>
+                <input className="input" type="number" min="0" value={form.num_employees} onChange={(e) => set('num_employees', e.target.value)} placeholder="Not incl. owners" />
+              </div>
+              <div>
+                <label className="label">Owners Working in Business</label>
+                <input className="input" type="number" min="0" value={form.num_owners} onChange={(e) => set('num_owners', e.target.value)} />
+              </div>
+              <div>
+                <label className="label">Business Square Footage</label>
+                <input className="input" type="number" min="0" value={form.business_square_footage} onChange={(e) => set('business_square_footage', e.target.value)} placeholder="Leased or owned" />
+              </div>
+            </div>
           </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: form.real_estate_included ? 20 : 12 }}>
+            <input type="checkbox" checked={form.real_estate_included} onChange={(e) => set('real_estate_included', e.target.checked)} />
+            <label style={{ fontSize: 14, color: 'var(--text)' }}>Real estate is owned and included in the sale</label>
+          </div>
+
+          {!form.real_estate_included && (
+            <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 16, marginBottom: 20, background: 'var(--cream)' }}>
+              <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 1.2, color: 'var(--gold-dark)', fontWeight: 700, marginBottom: 12 }}>Lease Terms</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label className="label">Years Remaining on Lease</label>
+                  <input className="input" type="number" step="0.5" min="0" value={form.lease_years_remaining} onChange={(e) => set('lease_years_remaining', e.target.value)} />
+                </div>
+                <div>
+                  <label className="label">Monthly Rent</label>
+                  <input className="input" type="number" min="0" value={form.monthly_rent} onChange={(e) => set('monthly_rent', e.target.value)} placeholder="$" />
+                </div>
+              </div>
+            </div>
+          )}
 
           {form.real_estate_included && (
             <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 16, marginBottom: 20, background: 'var(--cream)' }}>
