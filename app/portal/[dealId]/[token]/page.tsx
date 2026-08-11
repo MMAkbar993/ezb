@@ -15,16 +15,14 @@ import {
 } from '@/lib/clientPortal'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
 
+// Matches the live deals.status constraint exactly (confirmed 2026-08-11):
+// letter_of_intent | under_contract | due_diligence | closing | closed.
 const STAGE_LABEL: Record<string, { label: string; color: string }> = {
-  new: { label: 'New', color: '#3b82f6' },
-  qualified: { label: 'Qualified', color: '#8b5cf6' },
-  due_diligence: { label: 'Due Diligence', color: '#f59e0b' },
-  negotiation: { label: 'Negotiation', color: '#06b6d4' },
+  letter_of_intent: { label: 'Letter of Intent', color: '#f59e0b' },
+  under_contract: { label: 'Under Contract', color: '#06b6d4' },
+  due_diligence: { label: 'Due Diligence', color: '#8b5cf6' },
   closing: { label: 'Closing', color: '#c9a84c' },
   closed: { label: 'Closed', color: '#22c55e' },
-  loi: { label: 'Letter of Intent', color: '#f59e0b' },
-  under_contract: { label: 'Under Contract', color: '#06b6d4' },
-  lost: { label: 'Lost', color: '#dc2626' },
 }
 
 const money = (n: number | null | undefined): string => {

@@ -245,11 +245,11 @@ export async function fetchIndustries(): Promise<string[]> {
   }
 }
 
-/** Possible filter statuses per scope. */
+/** Possible filter statuses per scope — matches live DB constraints (confirmed 2026-08-11). */
 export const SCOPE_STATUSES: Record<Exclude<SearchScope, 'all'>, string[]> = {
-  listings: ['active', 'under_contract', 'sold', 'off_market', 'draft'],
-  deals: ['new', 'qualified', 'due_diligence', 'negotiation', 'closed', 'lost'],
-  leads: ['new', 'contacted', 'qualified', 'unqualified'],
+  listings: ['draft', 'active', 'under_loi', 'closed', 'withdrawn'],
+  deals: ['letter_of_intent', 'under_contract', 'due_diligence', 'closing', 'closed'],
+  leads: ['new', 'qualifying', 'qualified', 'handed_off', 'not_a_fit'],
   documents: [],
 }
 

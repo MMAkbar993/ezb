@@ -15,8 +15,15 @@
 //   9  Buyer management (NDA, financial proof, primary buyer)
 //   10 Deal closing (LOI → under contract → sold)
 //
-// Listing status lifecycle: draft → active → pending_sale → under_contract
-// → sold. Agent can withdraw (→ withdrawn) at any time.
+// Listing status lifecycle: draft → active → under_loi → closed. Agent can
+// withdraw (→ withdrawn) at any time. Confirmed against the live
+// listings_status_check constraint 2026-08-11 — matches Rabin's brief §3
+// exactly. (Previously assumed pending_sale/under_contract/sold, all three
+// of which the live constraint rejects — the buyer-agreement flow below was
+// silently failing to update listing status on every LOI/purchase-agreement/
+// closing event.) Fine-grained deal progression (LOI → under contract → due
+// diligence → closing → closed) is tracked separately on `deals.status` —
+// see lib/pipeline.ts — which already uses correct, working values.
 // =============================================================================
 
 import { supabase } from '@/lib/supabase/client'
@@ -25,15 +32,14 @@ import { authedFetch } from '@/lib/apiFetch'
 // ---------------------------------------------------------------------------
 // Status constants
 // ---------------------------------------------------------------------------
-export const LISTING_STATUS_LIFECYCLE = ['draft', 'active', 'pending_sale', 'under_contract', 'sold']
+export const LISTING_STATUS_LIFECYCLE = ['draft', 'active', 'under_loi', 'closed']
 export const WITHDRAWN = 'withdrawn'
 
 export const STATUS_STYLE: Record<string, { label: string; color: string; bg: string }> = {
   draft: { label: 'Draft', color: '#7a7a8a', bg: '#f3f3f6' },
   active: { label: 'Active', color: '#16a34a', bg: '#e8f7ee' },
-  pending_sale: { label: 'Pending Sale', color: '#b45309', bg: '#fdf3e3' },
-  under_contract: { label: 'Under Contract', color: '#0e7490', bg: '#e6f6fa' },
-  sold: { label: 'Sold', color: '#1a1a2e', bg: '#ece8f5' },
+  under_loi: { label: 'Under LOI', color: '#b45309', bg: '#fdf3e3' },
+  closed: { label: 'Closed', color: '#1a1a2e', bg: '#ece8f5' },
   withdrawn: { label: 'Withdrawn', color: '#dc2626', bg: '#fdeaea' },
 }
 
@@ -115,18 +121,19 @@ export async function setListingStatus(listingId: string, status: string): Promi
 
 /**
  * A buyer goes into agreement → status auto-updates.
- *  - LOI signed  → pending_sale
- *  - Purchase agreement signed → under_contract
- *  - Closing complete → sold
+ *  - LOI signed  → under_loi
+ *  - Purchase agreement signed → under_loi (no finer-grained listing-level
+ *    state exists live; deals.status tracks the detailed progression)
+ *  - Closing complete → closed
  */
 export async function updateStatusFromAgreement(
   listingId: string,
   agreementStatus: 'loi' | 'under_contract' | 'closing',
 ): Promise<boolean> {
   const map: Record<string, string> = {
-    loi: 'pending_sale',
-    under_contract: 'under_contract',
-    closing: 'sold',
+    loi: 'under_loi',
+    under_contract: 'under_loi',
+    closing: 'closed',
   }
   const status = map[agreementStatus] || agreementStatus
   return setListingStatus(listingId, status)
@@ -345,7 +352,7 @@ export async function getAgreement(listingId: string): Promise<any | null> {
     return data || null
   } catch { return null }
 }
-/** Record LOI → auto-updates listing status to pending_sale. */
+/** Record LOI → auto-updates listing status to under_loi. */
 export async function recordLOI(listingId: string, buyerId: string | null, fileUrl?: string): Promise<boolean> {
   try {
     const existing = await getAgreement(listingId)
@@ -359,7 +366,8 @@ export async function recordLOI(listingId: string, buyerId: string | null, fileU
     return updateStatusFromAgreement(listingId, 'loi')
   } catch { return false }
 }
-/** Record purchase agreement → auto-updates listing status to under_contract. */
+/** Record purchase agreement → auto-updates listing status to under_loi (the
+ * deal_agreements row itself still tracks the finer 'under_contract' state). */
 export async function recordPurchaseAgreement(listingId: string, buyerId: string | null, fileUrl?: string): Promise<boolean> {
   try {
     const existing = await getAgreement(listingId)
@@ -377,11 +385,14 @@ export async function recordPurchaseAgreement(listingId: string, buyerId: string
     return updateStatusFromAgreement(listingId, 'under_contract')
   } catch { return false }
 }
-/** Mark deal closed → auto-updates listing status to sold. */
+/** Mark deal closed → auto-updates listing status to closed. */
 export async function recordClosing(listingId: string, details: Partial<any>): Promise<boolean> {
   try {
     const agreement = await getAgreement(listingId)
-    const { error } = await supabase.from('deal_closing_details').insert({ listing_id: listingId, ...details, closed_at: new Date().toISOString() })
+    // deal_closing_details live columns: id, listing_id, closing_date,
+    // final_purchase_price, created_at (confirmed 2026-08-11) — no closed_at
+    // column; created_at already timestamps the row.
+    const { error } = await supabase.from('deal_closing_details').insert({ listing_id: listingId, ...details })
     if (error) return false
     if (agreement) {
       await supabase.from('deal_agreements').update({ status: 'closing' }).eq('id', agreement.id)

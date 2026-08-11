@@ -43,6 +43,11 @@ alter table public.listings
   add column if not exists total_value numeric
     generated always as (coalesce(asking_price, 0) + coalesce(property_value, 0)) stored;
 
+-- deal_closing_details is missing final_purchase_price — Step 10's closing
+-- form collects it but every save was silently failing without this column.
+alter table public.deal_closing_details
+  add column if not exists final_purchase_price numeric;
+
 comment on column public.listings.num_employees is 'Total employees currently working in the business (excluding owners).';
 comment on column public.listings.num_owners is 'Number of owners actively working in the business day-to-day.';
 comment on column public.listings.business_square_footage is 'Square footage of the business''s operating space (leased or owned) — independent of real_estate_included.';

@@ -7,8 +7,8 @@ import { STATUS_STYLE } from '@/lib/workflow'
 // ---------------------------------------------------------------------------
 
 export const NICE_STATUS: Record<string, string> = {
-  draft: 'Draft', active: 'Active', pending_sale: 'Pending Sale',
-  under_contract: 'Under Contract', sold: 'Sold', withdrawn: 'Withdrawn',
+  draft: 'Draft', active: 'Active', under_loi: 'Under LOI',
+  closed: 'Closed', withdrawn: 'Withdrawn',
 }
 
 export default function StatusBadge({ status, size = 'md' }: { status: string | null | undefined; size?: 'sm' | 'md' | 'lg' }) {

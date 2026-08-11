@@ -7,7 +7,7 @@ import { supabase } from '@/lib/supabase/client'
 //  on this table, so we don't reference them.)
 // ---------------------------------------------------------------------------
 
-export type LeadStatus = 'new' | 'qualifying' | 'qualified' | 'handed_off'
+export type LeadStatus = 'new' | 'qualifying' | 'qualified' | 'handed_off' | 'not_a_fit'
 
 export interface SellerLead {
   id: string
@@ -33,6 +33,7 @@ export const LEAD_STATUSES: { id: LeadStatus; label: string; color: string }[] =
   { id: 'qualifying', label: 'Qualifying', color: '#f59e0b' },
   { id: 'qualified', label: 'Qualified', color: '#8b5cf6' },
   { id: 'handed_off', label: 'Handed Off', color: '#22c55e' },
+  { id: 'not_a_fit', label: 'Not a Fit', color: '#ef4444' },
 ]
 
 export const statusMeta = (status: string | null | undefined) =>

@@ -68,8 +68,11 @@ export async function fetchRecentActivity(): Promise<ActivityItem[]> {
   const [dealsRes, leadsRes, cimRes, bovRes] = await Promise.allSettled([
     supabase.from('deals').select('id, listing_id, status, purchase_price, created_at, updated_at').order('updated_at', { ascending: false }).limit(8),
     supabase.from('seller_leads').select('*').order('created_at', { ascending: false }).limit(5),
-    supabase.from('cim_versions').select('*').order('created_at', { ascending: false }).limit(5),
-    supabase.from('bov_versions').select('*').order('created_at', { ascending: false }).limit(5),
+    // cim_versions/bov_versions use generated_at (not created_at) live — confirmed
+    // 2026-08-11. Ordering by a nonexistent column silently dropped these from the
+    // activity feed via the allSettled/error check below.
+    supabase.from('cim_versions').select('*').order('generated_at', { ascending: false }).limit(5),
+    supabase.from('bov_versions').select('*').order('generated_at', { ascending: false }).limit(5),
   ])
 
   const items: ActivityItem[] = []
@@ -98,14 +101,12 @@ export async function fetchRecentActivity(): Promise<ActivityItem[]> {
   }
   if (cimRes.status === 'fulfilled' && !cimRes.value.error) {
     for (const c of (cimRes.value.data || [])) {
-      const v = c.version_number ?? c.version
-      items.push({ id: 'cim-' + c.id, kind: 'note', title: `CIM version ${v} ${c.status}`, detail: c.title || c.business_name || '', createdAt: c.created_at })
+      items.push({ id: 'cim-' + c.id, kind: 'note', title: `CIM version ${c.version_number} ${c.status}`, detail: '', createdAt: c.generated_at })
     }
   }
   if (bovRes.status === 'fulfilled' && !bovRes.value.error) {
     for (const b of (bovRes.value.data || [])) {
-      const v = b.version_number ?? b.version
-      items.push({ id: 'bov-' + b.id, kind: 'note', title: `BOV version ${v} ${b.status}`, detail: b.title || b.business_name || '', createdAt: b.created_at })
+      items.push({ id: 'bov-' + b.id, kind: 'note', title: `BOV version ${b.version_number} ${b.status}`, detail: '', createdAt: b.generated_at })
     }
   }
 

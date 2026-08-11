@@ -53,14 +53,14 @@ function CommandCenter() {
 
   if (loading) return <LoadingState label="Loading command center…" />
 
-  const statuses = ['all', 'draft', 'active', 'pending_sale', 'under_contract', 'sold', 'withdrawn']
+  const statuses = ['all', 'draft', 'active', 'under_loi', 'closed', 'withdrawn']
   const shown = filter === 'all' ? listings : listings.filter((l) => l.status === filter)
 
   const stats = {
     total: listings.length,
     active: listings.filter((l) => l.status === 'active').length,
-    pending: listings.filter((l) => ['pending_sale', 'under_contract'].includes(l.status)).length,
-    sold: listings.filter((l) => l.status === 'sold').length,
+    pending: listings.filter((l) => l.status === 'under_loi').length,
+    sold: listings.filter((l) => l.status === 'closed').length,
   }
 
   const doWithdraw = async (id: string) => {
@@ -138,7 +138,7 @@ function CommandCenter() {
                       <div style={{ display: 'flex', gap: 6 }}>
                         <Link href={`/dashboard/listings/${l.id}/workflow`} style={miniBtn}>Workflow</Link>
                         <Link href={`/dashboard/listings/${l.id}/edit`} style={miniBtn}>Edit</Link>
-                        {l.status !== 'withdrawn' && l.status !== 'sold' && (
+                        {l.status !== 'withdrawn' && l.status !== 'closed' && (
                           <button onClick={() => doWithdraw(l.id)} style={{ ...miniBtn, color: '#dc2626', borderColor: '#fecaca' }}>Withdraw</button>
                         )}
                       </div>

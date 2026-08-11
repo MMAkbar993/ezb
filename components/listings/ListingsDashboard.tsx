@@ -89,7 +89,7 @@ export default function ListingsDashboard() {
 
   const filtered = statusFilter === 'all' ? listings : listings.filter((l) => l.status === statusFilter)
   const statusColor = (s?: string | null) =>
-    s === 'active' ? '#22c55e' : s === 'under_contract' ? '#f59e0b' : s === 'sold' ? '#3b82f6' : s === 'draft' ? '#94a3b8' : '#64748b'
+    s === 'active' ? '#22c55e' : s === 'under_loi' ? '#f59e0b' : s === 'closed' ? '#3b82f6' : s === 'draft' ? '#94a3b8' : '#64748b'
 
   return (
     <div>

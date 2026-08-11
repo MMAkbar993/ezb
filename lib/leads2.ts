@@ -3,10 +3,17 @@ import { createDeal } from '@/lib/pipeline'
 
 // ---------------------------------------------------------------------------
 // Unified Lead Management — buyer + seller leads.
-// Real schema (probed live):
-//   seller_leads: id, business_name, email, phone, status, created_at
-//   buyer_leads:  id, email, phone, status, created_at
-//   lead_activities: (create via sql files) id, lead_id, type, description, created_at
+// Real schema (probed live, 2026-08-11):
+//   seller_leads: id, full_name, email, phone, business_name, industry,
+//     revenue_range, timeframe, message, status, converted_listing_id,
+//     claimed_by, created_at, contact_name, location_general, notes
+//   buyer_leads: id, listing_id, full_name, email, phone, budget_range,
+//     industries_interest, industry_interest, message, status, ai_summary,
+//     created_at, contact_name, company, notes, desired_business_type,
+//     funds_available, financing_method, preferred_location
+//   lead_activities: id, lead_id, type, description, created_at
+//     (no lead_type/source_table column — callers must track which table an
+//     id belongs to themselves)
 // ---------------------------------------------------------------------------
 
 export type LeadStatus = 'new' | 'qualifying' | 'qualified' | 'handed_off' | 'not_a_fit'
@@ -19,20 +26,10 @@ export const LEAD_STATUSES: { id: LeadStatus; label: string; color: string }[] =
   { id: 'not_a_fit', label: 'Not a Fit', color: '#ef4444' },
 ]
 
-// NOTE (2026-08-03): the live `seller_leads_status_check` constraint ONLY
-// allows: new | contacted | closed. The unified funnel above (qualifying /
-// qualified / handed_off / not_a_fit) is fully supported on buyer_leads but
-// NOT on seller_leads. Until the schema migration is applied, we translate
-// seller-lead writes onto the allowed set so lead management never hits a
-// constraint error. (buyer_leads already matches the unified list verbatim.)
-const SELLER_STATUS_MAP: Record<string, string> = {
-  new: 'new',
-  qualifying: 'contacted',
-  qualified: 'contacted',
-  handed_off: 'closed',
-  not_a_fit: 'closed',
-}
-export const normalizeSellerStatus = (s?: string | null): string => SELLER_STATUS_MAP[s || 'new'] || s || 'new'
+// The live seller_leads_status_check constraint accepts the full unified
+// funnel verbatim (confirmed 2026-08-11 via live insert probe) — no
+// translation needed. Kept as a passthrough so callers don't need to change.
+export const normalizeSellerStatus = (s?: string | null): string => s || 'new'
 
 export const statusMeta = (s?: string | null) =>
   LEAD_STATUSES.find((x) => x.id === s) || { id: s || 'new', label: s || 'New', color: '#94a3b8' }

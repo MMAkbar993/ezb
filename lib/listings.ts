@@ -52,7 +52,10 @@ export interface Listing {
 
 export type ListingInput = Partial<Omit<Listing, 'id' | 'created_at' | 'updated_at'>>
 
-export const LISTING_STATUSES = ['draft', 'active', 'pending_sale', 'under_contract', 'sold', 'withdrawn']
+// Confirmed against the live listings_status_check constraint (2026-08-11) —
+// matches Rabin's brief §3 exactly. NOT pending_sale/under_contract/sold,
+// which the constraint rejects (that was the previous, incorrect assumption).
+export const LISTING_STATUSES = ['draft', 'active', 'under_loi', 'closed', 'withdrawn']
 
 export async function fetchListings(status?: string): Promise<Listing[]> {
   let query = supabase.from('listings').select('*')

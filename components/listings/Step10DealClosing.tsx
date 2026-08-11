@@ -29,7 +29,7 @@ export default function Step10DealClosing({ listingId, onNext }: { listingId: st
   }
   useEffect(() => { load() }, [listingId])
 
-  const stage = agreement?.status || (status === 'sold' ? 'closing' : 'loi')
+  const stage = agreement?.status || (status === 'closed' ? 'closing' : 'loi')
   const stageIdx = stage === 'loi' ? 1 : stage === 'under_contract' ? 2 : 3
 
   const doLOI = async () => { setBusy(true); await recordLOI(listingId, selectedBuyer || null); await load(); setBusy(false) }
@@ -37,9 +37,9 @@ export default function Step10DealClosing({ listingId, onNext }: { listingId: st
   const doClose = async () => { setBusy(true); await recordClosing(listingId, { closing_date: closingDate || null, final_purchase_price: Number(finalPrice) || null }); await load(); setBusy(false) }
 
   const stages = [
-    { label: 'LOI signed', hint: 'Moves listing to Pending Sale', done: stageIdx >= 1, action: doLOI, btnLabel: 'Record signed LOI' },
-    { label: 'Purchase agreement', hint: 'Moves listing to Under Contract', done: stageIdx >= 2, action: doPurchase, btnLabel: 'Record signed purchase agreement' },
-    { label: 'Closing', hint: 'Moves listing to Sold', done: stageIdx >= 3, action: doClose, btnLabel: 'Record closing', hasInputs: true },
+    { label: 'LOI signed', hint: 'Moves listing to Under LOI', done: stageIdx >= 1, action: doLOI, btnLabel: 'Record signed LOI' },
+    { label: 'Purchase agreement', hint: 'Keeps listing Under LOI', done: stageIdx >= 2, action: doPurchase, btnLabel: 'Record signed purchase agreement' },
+    { label: 'Closing', hint: 'Moves listing to Closed', done: stageIdx >= 3, action: doClose, btnLabel: 'Record closing', hasInputs: true },
   ]
 
   return (
