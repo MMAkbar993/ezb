@@ -54,13 +54,18 @@ const SECURITY_CONFIG: Partial<WebSecureConfig> = {
   referrerPolicy: { enabled: true, policy: 'strict-origin-when-cross-origin' },
   permissionsPolicy: {
     enabled: true,
+    // websecure-ez only wraps a feature's value in parentheses when given an
+    // array (`${feature}=(${value.join(' ')})`) — a bare string like 'self'
+    // was passed straight through unwrapped as `camera=self`, which is
+    // invalid Permissions-Policy syntax (structured header parser rejects
+    // it). Arrays produce the correct `camera=(self)` / `usb=()` output.
     features: {
-      camera: 'self',
-      microphone: 'self',
-      geolocation: 'self',
-      payment: 'self',
-      usb: '()',
-      'interest-cohort': '()',
+      camera: ['self'],
+      microphone: ['self'],
+      geolocation: ['self'],
+      payment: ['self'],
+      usb: [],
+      'interest-cohort': [],
     },
   },
   crossOriginOpenerPolicy: { enabled: true, policy: 'same-origin-allow-popups' },

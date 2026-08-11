@@ -84,7 +84,20 @@ export async function createListing(input: ListingInput): Promise<Listing> {
   // permanently fixes the "null value in column \"agent_id\"" insert error.
   // Prefer the signed-in user; fall back to an explicit input.agent_id if a
   // caller supplies one (e.g. service-role seeding).
+  //
+  // Explicitly check for a valid session first: the RLS insert policy
+  // requires agent_id = auth.uid(), and if the session token is missing or
+  // has expired, the request is evaluated as `anon` (no insert policy at
+  // all) and fails with a cryptic 42501 RLS error instead of a clear
+  // "please sign in again" message.
+  const { data: sessionData } = await supabase.auth.getSession()
+  if (!sessionData?.session) {
+    throw new Error('Your session has expired. Please sign in again and retry.')
+  }
   const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Your session has expired. Please sign in again and retry.')
+  }
   const agentId: string | null = user?.id ?? input.agent_id ?? null
 
   const { data, error } = await supabase

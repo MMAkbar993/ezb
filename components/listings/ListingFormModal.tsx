@@ -80,9 +80,13 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
     setSubmitting(true)
     setError('')
     try {
+      // headline is a required (not-null) column live — auto-derive a sensible
+      // default from industry + location if the broker leaves it blank, rather
+      // than force a required field the form never marked as required.
+      const fallbackHeadline = [form.industry, form.location_general].filter(Boolean).join(' — ') || form.business_name
       await onSubmit({
         business_name: form.business_name,
-        headline: form.headline || null,
+        headline: form.headline.trim() || fallbackHeadline,
         industry: form.industry || null,
         location_general: form.location_general || null,
         description: form.description || null,
