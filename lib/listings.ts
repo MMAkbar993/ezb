@@ -48,6 +48,19 @@ export interface Listing {
   business_square_footage: number | null
   lease_years_remaining: number | null
   monthly_rent: number | null
+  // BizBuySell-style classification + marketing detail
+  business_type: string | null
+  sub_industry: string | null
+  year_established: number | null
+  hours_of_operation: string | null
+  growth_potential: string | null
+  competition: string | null
+  market_position: string | null
+  furniture_and_equipment_included: boolean | null
+  inventory_included: boolean | null
+  // Real-estate detail (only relevant when real_estate_included = true)
+  property_type: string | null
+  real_estate_asking_price: number | null
 }
 
 export type ListingInput = Partial<Omit<Listing, 'id' | 'created_at' | 'updated_at'>>

@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation'
 import { capturePublicLead, PublicListing } from '@/lib/marketplace'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { fmt$ } from '@/lib/recast'
+import NdaFinancialsGate from '@/components/public/NdaFinancialsGate'
 
 export default function ListingDetailInteractive({ listing }: { listing: PublicListing }) {
   const toast = useToast()
@@ -23,10 +24,6 @@ export default function ListingDetailInteractive({ listing }: { listing: PublicL
 
   const gallery = [listing.primary_image_url, listing.featured_image_url, ...(listing.image_urls || [])].filter(Boolean) as string[]
   const price = listing.asking_price
-  const revenue = listing.annual_revenue
-  const sde = listing.sde
-  const ebitda = listing.ebitda
-  const sdeMultiple = sde && price ? price / sde : null
 
   const submitLead = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -102,23 +99,7 @@ export default function ListingDetailInteractive({ listing }: { listing: PublicL
           <div style={{ background: '#fff', border: '1px solid #ece8dc', borderRadius: 12, overflow: 'hidden', boxShadow: '0 6px 30px rgba(26,26,46,0.08)' }}>
             <div style={{ background: '#1a1a2e', color: '#c9a84c', padding: '16px 20px', fontFamily: 'Georgia, serif', fontWeight: 700, fontSize: 15 }}>Financial Snapshot</div>
             <div style={{ padding: 20 }}>
-              {[
-                ['Revenue', fmt$(revenue)],
-                ['SDE (Seller\'s Discretionary Earnings)', fmt$(sde)],
-                ...(ebitda ? [['EBITDA', fmt$(ebitda)] as [string, string]] : []),
-                ['SDE Multiple', sdeMultiple ? sdeMultiple.toFixed(1) + 'x' : '—'],
-              ].map(([label, value]) => (
-                <div key={label} style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #f0ecdf' }}>
-                  <span style={{ fontSize: 13, color: '#888' }}>{label}</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e' }}>{value}</span>
-                </div>
-              ))}
-              {(listing.inventory_value || 0) > 0 && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #f0ecdf' }}>
-                  <span style={{ fontSize: 13, color: '#888' }}>Inventory</span>
-                  <span style={{ fontSize: 14, fontWeight: 700, color: '#1a1a2e' }}>{fmt$(listing.inventory_value)}</span>
-                </div>
-              )}
+              <NdaFinancialsGate listing={listing} askingPrice={price} />
             </div>
           </div>
 

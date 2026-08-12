@@ -10,8 +10,15 @@
 // =============================================================================
 
 import { supabase } from '@/lib/supabase/client'
+import { createListing } from '@/lib/listings'
+import { FF_BUCKET } from '@/lib/storageBuckets'
 
-export const FF_BUCKET = 'documents'
+// Re-exported for backward compatibility with existing client-side imports
+// of FF_BUCKET from this file. The canonical definition lives in
+// lib/storageBuckets.ts (no 'use client' directive) — server-only modules
+// must import FF_BUCKET from there directly, never from this file (see that
+// file's header comment for why).
+export { FF_BUCKET }
 
 // ---------------------------------------------------------------------------
 // Types
@@ -218,6 +225,28 @@ export async function fetchDealOptions(): Promise<DealOption[]> {
   return opts.sort((a, b) => a.title.localeCompare(b.title))
 }
 
+// ---------------------------------------------------------------------------
+// "Business not yet listed" — a broker uploading financials for a business
+// that hasn't gone through the listing workflow yet still needs somewhere to
+// upload, generate, and download from. Rather than teach the whole Recast ->
+// BOV -> CIM -> BLI pipeline a second, listing-less code path, this creates a
+// minimal draft listing behind the scenes (status='draft', review_stage=
+// 'draft') that the pipeline already knows how to use — it's never public
+// (public_listing_feed requires status='active' + review_stage='approved' +
+// published=true) and shows up in the Listings dashboard tagged "draft" so
+// it can be found again, developed into a real listing, or ignored.
+// ---------------------------------------------------------------------------
+export async function createUnlistedBusiness(name: string): Promise<DealOption> {
+  const trimmed = name.trim()
+  if (!trimmed) throw new Error('Business name is required')
+  const listing = await createListing({
+    business_name: trimmed,
+    headline: trimmed,
+    status: 'draft',
+  } as any)
+  return { id: listing.id, listingId: listing.id, dealId: null, title: `${trimmed} (Unlisted)` }
+}
+
 // Resolve whether an option is a deal or a listing (heuristic: has a deal prefix
 // or not). We store whichever id the user picked; parent linkage handled by RLS
 // rules + the deal_id/listing_id columns we set explicitly.
@@ -242,6 +271,19 @@ export async function getAccessToken(): Promise<string | null> {
   } catch {
     return null
   }
+}
+
+// ---------------------------------------------------------------------------
+// Signed URLs — FF_BUCKET is private, so `file_url` (a legacy public-URL
+// string, kept only for backward compatibility with documents uploaded
+// before this bucket became private) does not actually grant access anymore.
+// Every preview/download must resolve a fresh short-lived signed URL first.
+// ---------------------------------------------------------------------------
+export async function getSignedFileUrl(storagePath: string | null | undefined, expiresInSeconds = 3600): Promise<string | null> {
+  if (!storagePath) return null
+  const { data, error } = await supabase.storage.from(FF_BUCKET).createSignedUrl(storagePath, expiresInSeconds)
+  if (error || !data?.signedUrl) return null
+  return data.signedUrl
 }
 
 // ---------------------------------------------------------------------------

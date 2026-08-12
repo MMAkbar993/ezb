@@ -10,20 +10,24 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import MultiFileDropzone from '@/components/financial/MultiFileDropzone'
-import { fetchDealOptions, getAccessToken, type DealOption } from '@/lib/financialFiles'
+import { fetchDealOptions, createUnlistedBusiness, getAccessToken, type DealOption } from '@/lib/financialFiles'
 import type { AutoGenerateResult } from '@/lib/autoGenerateTypes'
 
 interface Props {
   onGenerated: (result: AutoGenerateResult) => void
   activeParentId: string
+  onSelectionChange?: (option: DealOption | null) => void
 }
 
-export default function OneClickUpload({ onGenerated, activeParentId }: Props) {
+export default function OneClickUpload({ onGenerated, activeParentId, onSelectionChange }: Props) {
   const [options, setOptions] = useState<DealOption[]>([])
   const [selected, setSelected] = useState('')
   const [running, setRunning] = useState(false)
   const [status, setStatus] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [creatingNew, setCreatingNew] = useState(false)
+  const [newBizName, setNewBizName] = useState('')
+  const [creating, setCreating] = useState(false)
 
   const loadOptions = useCallback(async () => {
     try {
@@ -43,6 +47,33 @@ export default function OneClickUpload({ onGenerated, activeParentId }: Props) {
 
   const selectedOption = useMemo(() => options.find((x) => x.id === selected) || null, [options, selected])
   const selectedTitle = selectedOption?.title || ''
+
+  useEffect(() => { onSelectionChange?.(selectedOption) }, [selectedOption, onSelectionChange])
+
+  const handleSelectChange = (value: string) => {
+    if (value === '__new__') {
+      setCreatingNew(true)
+      return
+    }
+    setSelected(value)
+  }
+
+  const createNew = async () => {
+    if (!newBizName.trim() || creating) return
+    setCreating(true)
+    setError(null)
+    try {
+      const opt = await createUnlistedBusiness(newBizName)
+      setOptions((prev) => [...prev, opt].sort((a, b) => a.title.localeCompare(b.title)))
+      setSelected(opt.id)
+      setCreatingNew(false)
+      setNewBizName('')
+    } catch (e: any) {
+      setError(e?.message || 'Could not create business')
+    } finally {
+      setCreating(false)
+    }
+  }
 
   const generate = async () => {
     if (!selectedOption || running) return
@@ -81,7 +112,7 @@ export default function OneClickUpload({ onGenerated, activeParentId }: Props) {
         </label>
         <select
           value={selected}
-          onChange={(e) => setSelected(e.target.value)}
+          onChange={(e) => handleSelectChange(e.target.value)}
           className="select"
           style={{ flex: '1 1 280px', padding: '8px 12px', borderRadius: 8, border: '1px solid var(--line)', fontFamily: 'inherit', fontSize: 13.5, background: '#fff' }}
         >
@@ -89,8 +120,27 @@ export default function OneClickUpload({ onGenerated, activeParentId }: Props) {
           {options.map((o) => (
             <option key={o.id} value={o.id}>{o.title}</option>
           ))}
+          <option value="__new__">+ New business (not listed yet)</option>
         </select>
       </div>
+
+      {creatingNew && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginBottom: 14, padding: 12, borderRadius: 8, background: 'var(--cream)', border: '1px solid var(--line)' }}>
+          <input
+            className="input"
+            style={{ flex: '1 1 220px' }}
+            placeholder="Business name"
+            value={newBizName}
+            onChange={(e) => setNewBizName(e.target.value)}
+            onKeyDown={(e) => { if (e.key === 'Enter') createNew() }}
+            autoFocus
+          />
+          <button type="button" className="btn btn-primary" onClick={createNew} disabled={!newBizName.trim() || creating}>
+            {creating ? 'Creating…' : 'Create'}
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={() => { setCreatingNew(false); setNewBizName('') }}>Cancel</button>
+        </div>
+      )}
 
       {/* Single upload surface */}
       <MultiFileDropzone

@@ -148,9 +148,10 @@ export function downloadZip(blob: Blob, filename: string) {
  * Falls back to triggering individual downloads for any that fail.
  */
 export async function downloadDocsAsZip(
-  docs: { file_name: string; file_url: string }[],
+  docs: { file_name: string; file_url: string; storage_path?: string | null }[],
   zipName: string,
   onStatus?: (msg: string) => void,
+  resolveUrl?: (d: { file_url: string; storage_path?: string | null }) => Promise<string | null>,
 ): Promise<{ ok: number; failed: number }> {
   const entries: ZipEntry[] = []
   let ok = 0
@@ -159,7 +160,8 @@ export async function downloadDocsAsZip(
   for (const d of docs) {
     onStatus?.(`Fetching ${d.file_name}…`)
     try {
-      const res = await fetch(d.file_url)
+      const url = (resolveUrl ? await resolveUrl(d) : d.file_url) || d.file_url
+      const res = await fetch(url)
       if (!res.ok) throw new Error('bad status ' + res.status)
       const buf = await res.arrayBuffer()
       entries.push({ name: d.file_name, bytes: new Uint8Array(buf) })

@@ -8,7 +8,7 @@
 
 import { useMemo, useState } from 'react'
 import type { FinancialDoc, FinancialStatus } from '@/lib/financialFiles'
-import { formatBytes } from '@/lib/financialFiles'
+import { formatBytes, getSignedFileUrl } from '@/lib/financialFiles'
 import { FileTypeBadge, CategoryBadge, StatusPill } from '@/components/financial/FilesUI'
 import { downloadDocsAsZip } from '@/lib/zip'
 
@@ -36,15 +36,34 @@ export default function AllDocumentsView({ docs, onRefresh, onDelete, dealTitle 
   const generated = docs.filter((d) => d.category === 'generated_document')
   const uploaded = docs.filter((d) => d.category !== 'generated_document')
 
+  // Financial documents live in a private bucket — resolve a fresh signed
+  // URL right before opening/downloading rather than using the stored
+  // (no longer publicly accessible) file_url directly.
+  const openDoc = async (d: FinancialDoc) => {
+    const url = await getSignedFileUrl(d.storage_path)
+    if (url) window.open(url, '_blank', 'noreferrer')
+  }
+  const downloadDoc = async (d: FinancialDoc) => {
+    const url = await getSignedFileUrl(d.storage_path)
+    if (!url) return
+    const link = document.createElement('a')
+    link.href = url
+    link.download = d.file_name
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  }
+
   const onZip = async () => {
     const targets = filtered.length ? filtered : docs
     if (!targets.length) return
     setZipping(true)
     setZipMsg(null)
     const res = await downloadDocsAsZip(
-      targets.map((d) => ({ file_name: d.file_name, file_url: d.file_url })),
+      targets.map((d) => ({ file_name: d.file_name, file_url: d.file_url, storage_path: d.storage_path })),
       `financial-documents-${new Date().toISOString().slice(0, 10)}.zip`,
       (m) => setZipMsg(m),
+      async (d) => getSignedFileUrl(d.storage_path),
     )
     setZipMsg(`ZIP: ${res.ok} downloaded, ${res.failed} failed`)
     setZipping(false)
@@ -124,15 +143,14 @@ export default function AllDocumentsView({ docs, onRefresh, onDelete, dealTitle 
                       <div style={{ display: 'flex', alignItems: 'center', gap: 10, maxWidth: 280 }}>
                         <span style={{ fontSize: 19 }}>{generated ? (f.file_name.includes('Recast') ? '🔄' : f.file_name.includes('BOV') ? '⚖️' : f.file_name.includes('CIM') ? '📑' : f.file_name.includes('BLI') ? '📋' : '📄') : '📎'}</span>
                         <div style={{ minWidth: 0 }}>
-                          <a
-                            href={f.file_url}
-                            target="_blank"
-                            rel="noreferrer"
-                            style={{ fontWeight: 600, color: 'var(--navy)', textDecoration: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block' }}
+                          <button
+                            type="button"
+                            onClick={() => openDoc(f)}
+                            style={{ fontWeight: 600, color: 'var(--navy)', textDecoration: 'none', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', display: 'block', background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', textAlign: 'left' }}
                             title={f.file_name}
                           >
                             {f.file_name}
-                          </a>
+                          </button>
                           <div style={{ marginTop: 3 }}><FileTypeBadge kind={f.file_kind as any} size="sm" /></div>
                         </div>
                       </div>
@@ -150,15 +168,13 @@ export default function AllDocumentsView({ docs, onRefresh, onDelete, dealTitle 
                     </td>
                     <td style={{ padding: '11px 12px' }}>
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <a
+                        <button
+                          type="button"
                           title="Download"
-                          href={f.file_url}
-                          download={f.file_name}
-                          target="_blank"
-                          rel="noreferrer"
+                          onClick={() => downloadDoc(f)}
                           className="btn-ghost"
-                          style={{ padding: '5px 9px', fontSize: 13, textDecoration: 'none', display: 'inline-flex', alignItems: 'center' }}
-                        >⬇️</a>
+                          style={{ padding: '5px 9px', fontSize: 13, display: 'inline-flex', alignItems: 'center' }}
+                        >⬇️</button>
                         <button
                           title="Delete"
                           onClick={() => onDelete(f)}

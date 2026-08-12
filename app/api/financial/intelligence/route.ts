@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createServerClient } from '@/lib/supabase/server'
-import { FF_BUCKET } from '@/lib/financialFiles'
+// Imported from the boundary-neutral constants module, not from
+// lib/financialFiles.ts (which is 'use client') — a server-only route
+// importing a runtime value from a 'use client' module gets an opaque
+// client-reference placeholder instead of the real string. See
+// lib/storageBuckets.ts for the full explanation.
+import { FF_BUCKET } from '@/lib/storageBuckets'
 import { analyzeDocumentText, detectUniversalDocType } from '@/lib/ai/documentAnalyzer'
 import { extractDocumentText, isPlainTextType } from '@/lib/ai/textExtract'
 import { mergeAnalyses, type AiExtractionOutput } from '@/lib/ai/financialExtractor'

@@ -19,7 +19,7 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import OneClickUpload from '@/components/financial/OneClickUpload'
 import AutoGenerationDashboard from '@/components/financial/AutoGenerationDashboard'
 import type { AutoGenerateResult } from '@/lib/autoGenerateTypes'
-import { FinancialDoc, fetchFinancialFiles } from '@/lib/financialFiles'
+import { FinancialDoc, fetchFinancialFiles, type DealOption } from '@/lib/financialFiles'
 
 export default function FinancialPage() {
   return (
@@ -39,6 +39,7 @@ function FinancialDashboard() {
   const [loading, setLoading] = useState(true)
   const [genResult, setGenResult] = useState<AutoGenerateResult | null>(null)
   const [running, setRunning] = useState(false)
+  const [activeOption, setActiveOption] = useState<DealOption | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -70,18 +71,25 @@ function FinancialDashboard() {
           <OneClickUpload
             activeParentId=""
             onGenerated={(r) => { setGenResult(r); setRunning(false); toast(`Generated ${r.artifacts.length} document(s)`, 'success'); load() }}
+            onSelectionChange={setActiveOption}
           />
         </div>
       </Card>
 
-      {(genResult || files.some((f) => f.category === 'generated_document')) && (
-        <Card>
-          <CardHeader title="Results" subtitle="Recast, BOV, CIM & BLI for the listing you just ran" />
-          <div style={{ padding: 18 }}>
-            <AutoGenerationDashboard result={genResult} docs={files} onRunAgain={() => {}} running={running} />
-          </div>
-        </Card>
-      )}
+      {(() => {
+        if (!activeOption) return null
+        const scoped = files.filter((f) => f.listing_id === activeOption.listingId)
+        const resultForActive = genResult?.listingId === activeOption.listingId ? genResult : null
+        if (!resultForActive && !scoped.some((f) => f.category === 'generated_document')) return null
+        return (
+          <Card>
+            <CardHeader title="Results" subtitle={`Recast, BOV, CIM & BLI for "${activeOption.title}"`} />
+            <div style={{ padding: 18 }}>
+              <AutoGenerationDashboard result={resultForActive} docs={scoped} onRunAgain={() => {}} running={running} />
+            </div>
+          </Card>
+        )
+      })()}
     </div>
   )
 }

@@ -4,8 +4,10 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Listing, fetchListings, createListing, updateListing, deleteListing, fmtMoney, LISTING_STATUSES } from '@/lib/listings'
 import { useToast } from '@/components/ui/Toast'
-import { LoadingState, EmptyState, Card, Badge } from '@/components/ui'
+import { LoadingState, EmptyState, Card } from '@/components/ui'
 import ListingFormModal from './ListingFormModal'
+import StatusBadge from './StatusBadge'
+import { STATUS_STYLE } from '@/lib/workflow'
 import { queueAutoPosts } from '@/lib/services/social'
 import { supabase } from '@/lib/supabase/client'
 
@@ -88,8 +90,6 @@ export default function ListingsDashboard() {
   }
 
   const filtered = statusFilter === 'all' ? listings : listings.filter((l) => l.status === statusFilter)
-  const statusColor = (s?: string | null) =>
-    s === 'active' ? '#22c55e' : s === 'under_loi' ? '#f59e0b' : s === 'closed' ? '#3b82f6' : s === 'draft' ? '#94a3b8' : '#64748b'
 
   return (
     <div>
@@ -110,7 +110,7 @@ export default function ListingsDashboard() {
       <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
         <FilterPill active={statusFilter === 'all'} onClick={() => setStatusFilter('all')}>All</FilterPill>
         {LISTING_STATUSES.map((s) => (
-          <FilterPill key={s} active={statusFilter === s} onClick={() => setStatusFilter(s)}>{s.replace(/_/g, ' ')}</FilterPill>
+          <FilterPill key={s} active={statusFilter === s} onClick={() => setStatusFilter(s)}>{STATUS_STYLE[s]?.label || s}</FilterPill>
         ))}
       </div>
 
@@ -130,7 +130,7 @@ export default function ListingsDashboard() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--gold-light)', fontSize: 32 }}>🏢</div>
                 )}
                 <div style={{ position: 'absolute', top: 10, left: 10 }}>
-                  <Badge color={statusColor(listing.status)}>{listing.status || 'draft'}</Badge>
+                  <StatusBadge status={listing.status} />
                 </div>
               </div>
 
@@ -175,7 +175,7 @@ export default function ListingsDashboard() {
                   onChange={(e) => handleStatus(listing, e.target.value)}
                   style={{ marginTop: 10, fontSize: 13 }}
                 >
-                  {LISTING_STATUSES.map((s) => <option key={s} value={s}>{s.replace(/_/g, ' ')}</option>)}
+                  {LISTING_STATUSES.map((s) => <option key={s} value={s}>{STATUS_STYLE[s]?.label || s}</option>)}
                 </select>
               </div>
             </Card>
@@ -186,7 +186,7 @@ export default function ListingsDashboard() {
       {showForm && (
         <ListingFormModal
           listing={editing}
-          onClose={() => { setShowForm(false); setEditing(null) }}
+          onClose={() => { setShowForm(false); setEditing(null); load() }}
           onSubmit={handleSubmit}
         />
       )}

@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { Listing, LISTING_STATUSES } from '@/lib/listings'
+import ListingPhotoUpload from './ListingPhotoUpload'
 
 interface ListingFormModalProps {
   listing: Listing | null
@@ -13,6 +14,8 @@ interface FormState {
   business_name: string
   headline: string
   industry: string
+  business_type: string
+  sub_industry: string
   location_general: string
   description: string
   asking_price: string
@@ -24,11 +27,20 @@ interface FormState {
   num_employees: string
   num_owners: string
   business_square_footage: string
+  year_established: string
+  hours_of_operation: string
+  furniture_and_equipment_included: boolean
+  inventory_included: boolean
+  growth_potential: string
+  competition: string
+  market_position: string
   real_estate_included: boolean
   lease_years_remaining: string
   monthly_rent: string
   property_value: string
   property_description: string
+  property_type: string
+  real_estate_asking_price: string
   square_footage: string
   land_acres: string
   year_built: string
@@ -38,6 +50,8 @@ interface FormState {
   property_zip: string
 }
 
+const PROPERTY_TYPES = ['', 'Industrial', 'Retail', 'Office', 'Mixed Use', 'Land', 'Other']
+
 const numOrNull = (s: string): number | null => (s === '' ? null : Number(s))
 
 export default function ListingFormModal({ listing, onClose, onSubmit }: ListingFormModalProps) {
@@ -45,6 +59,8 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
     business_name: listing?.business_name || '',
     headline: listing?.headline || '',
     industry: listing?.industry || '',
+    business_type: listing?.business_type || '',
+    sub_industry: listing?.sub_industry || '',
     location_general: listing?.location_general || '',
     description: listing?.description || '',
     asking_price: listing?.asking_price ? String(listing.asking_price) : '',
@@ -56,11 +72,20 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
     num_employees: listing?.num_employees != null ? String(listing.num_employees) : '',
     num_owners: listing?.num_owners != null ? String(listing.num_owners) : '',
     business_square_footage: listing?.business_square_footage != null ? String(listing.business_square_footage) : '',
+    year_established: listing?.year_established != null ? String(listing.year_established) : '',
+    hours_of_operation: listing?.hours_of_operation || '',
+    furniture_and_equipment_included: listing?.furniture_and_equipment_included || false,
+    inventory_included: listing?.inventory_included || false,
+    growth_potential: listing?.growth_potential || '',
+    competition: listing?.competition || '',
+    market_position: listing?.market_position || '',
     real_estate_included: listing?.real_estate_included || false,
     lease_years_remaining: listing?.lease_years_remaining != null ? String(listing.lease_years_remaining) : '',
     monthly_rent: listing?.monthly_rent != null ? String(listing.monthly_rent) : '',
     property_value: listing?.property_value ? String(listing.property_value) : '',
     property_description: listing?.property_description || '',
+    property_type: listing?.property_type || '',
+    real_estate_asking_price: listing?.real_estate_asking_price ? String(listing.real_estate_asking_price) : '',
     square_footage: listing?.square_footage ? String(listing.square_footage) : '',
     land_acres: listing?.land_acres ? String(listing.land_acres) : '',
     year_built: listing?.year_built ? String(listing.year_built) : '',
@@ -71,6 +96,8 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
   })
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
+  const [imageUrls, setImageUrls] = useState<string[]>(listing?.image_urls || [])
+  const [primaryImageUrl, setPrimaryImageUrl] = useState<string | null>(listing?.primary_image_url || null)
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -88,6 +115,8 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
         business_name: form.business_name,
         headline: form.headline.trim() || fallbackHeadline,
         industry: form.industry || null,
+        business_type: form.business_type || null,
+        sub_industry: form.sub_industry || null,
         location_general: form.location_general || null,
         description: form.description || null,
         asking_price: numOrNull(form.asking_price),
@@ -99,11 +128,20 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
         num_employees: numOrNull(form.num_employees),
         num_owners: numOrNull(form.num_owners),
         business_square_footage: numOrNull(form.business_square_footage),
+        year_established: form.year_established ? Number(form.year_established) : null,
+        hours_of_operation: form.hours_of_operation.trim() || null,
+        furniture_and_equipment_included: form.furniture_and_equipment_included,
+        inventory_included: form.inventory_included,
+        growth_potential: form.growth_potential.trim() || null,
+        competition: form.competition.trim() || null,
+        market_position: form.market_position.trim() || null,
         real_estate_included: form.real_estate_included,
         lease_years_remaining: !form.real_estate_included ? numOrNull(form.lease_years_remaining) : null,
         monthly_rent: !form.real_estate_included ? numOrNull(form.monthly_rent) : null,
         property_value: form.real_estate_included ? numOrNull(form.property_value) : null,
         property_description: form.real_estate_included ? form.property_description.trim() || null : null,
+        property_type: form.real_estate_included ? form.property_type || null : null,
+        real_estate_asking_price: form.real_estate_included ? numOrNull(form.real_estate_asking_price) : null,
         square_footage: form.real_estate_included ? numOrNull(form.square_footage) : null,
         land_acres: form.real_estate_included ? numOrNull(form.land_acres) : null,
         year_built: form.real_estate_included && form.year_built ? Number(form.year_built) : null,
@@ -129,6 +167,19 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
         {error && <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontSize: 14 }}>{error}</div>}
 
         <form onSubmit={handleSubmit}>
+          {listing ? (
+            <ListingPhotoUpload
+              listingId={listing.id}
+              imageUrls={imageUrls}
+              primaryImageUrl={primaryImageUrl}
+              onChange={(next) => { setImageUrls(next.image_urls); setPrimaryImageUrl(next.primary_image_url) }}
+            />
+          ) : (
+            <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 14, padding: '10px 12px', background: 'var(--cream)', borderRadius: 8 }}>
+              📷 Save the listing first, then reopen it to add photos.
+            </div>
+          )}
+
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
             <div>
               <label className="label">Business Name *</label>
@@ -137,6 +188,17 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
             <div>
               <label className="label">Industry</label>
               <input className="input" value={form.industry} onChange={(e) => set('industry', e.target.value)} placeholder="e.g. Business Services" />
+            </div>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+            <div>
+              <label className="label">Business Type (broad category)</label>
+              <input className="input" value={form.business_type} onChange={(e) => set('business_type', e.target.value)} placeholder="e.g. Retail, Restaurants & Food" />
+            </div>
+            <div>
+              <label className="label">Sub-Industry</label>
+              <input className="input" value={form.sub_industry} onChange={(e) => set('sub_industry', e.target.value)} placeholder="Finer-grained classification" />
             </div>
           </div>
 
@@ -189,7 +251,7 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
 
           <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 16, marginBottom: 20 }}>
             <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 1.2, color: 'var(--gold-dark)', fontWeight: 700, marginBottom: 12 }}>Business Operations</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
               <div>
                 <label className="label">Employees</label>
                 <input className="input" type="number" min="0" value={form.num_employees} onChange={(e) => set('num_employees', e.target.value)} placeholder="Not incl. owners" />
@@ -202,6 +264,42 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
                 <label className="label">Business Square Footage</label>
                 <input className="input" type="number" min="0" value={form.business_square_footage} onChange={(e) => set('business_square_footage', e.target.value)} placeholder="Leased or owned" />
               </div>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div>
+                <label className="label">Year Established</label>
+                <input className="input" type="number" value={form.year_established} onChange={(e) => set('year_established', e.target.value)} placeholder="e.g. 1998" />
+              </div>
+              <div>
+                <label className="label">Hours of Operation</label>
+                <input className="input" value={form.hours_of_operation} onChange={(e) => set('hours_of_operation', e.target.value)} placeholder="e.g. Mon-Fri 9am-5pm" />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 20 }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text)' }}>
+                <input type="checkbox" checked={form.furniture_and_equipment_included} onChange={(e) => set('furniture_and_equipment_included', e.target.checked)} />
+                Furniture & Equipment Included
+              </label>
+              <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 14, color: 'var(--text)' }}>
+                <input type="checkbox" checked={form.inventory_included} onChange={(e) => set('inventory_included', e.target.checked)} />
+                Inventory Included
+              </label>
+            </div>
+          </div>
+
+          <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 16, marginBottom: 20 }}>
+            <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 1.2, color: 'var(--gold-dark)', fontWeight: 700, marginBottom: 12 }}>Marketing Detail</div>
+            <div style={{ marginBottom: 12 }}>
+              <label className="label">Growth & Expansion Potential</label>
+              <textarea className="textarea" rows={2} value={form.growth_potential} onChange={(e) => set('growth_potential', e.target.value)} placeholder="Opportunities for a new owner to grow the business" />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label className="label">Competition</label>
+              <textarea className="textarea" rows={2} value={form.competition} onChange={(e) => set('competition', e.target.value)} placeholder="Competitive landscape" />
+            </div>
+            <div>
+              <label className="label">Market Position</label>
+              <textarea className="textarea" rows={2} value={form.market_position} onChange={(e) => set('market_position', e.target.value)} placeholder="Positioning relative to competitors" />
             </div>
           </div>
 
@@ -229,6 +327,18 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
           {form.real_estate_included && (
             <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 16, marginBottom: 20, background: 'var(--cream)' }}>
               <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 1.2, color: 'var(--gold-dark)', fontWeight: 700, marginBottom: 12 }}>Property Details</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                <div>
+                  <label className="label">Property Type</label>
+                  <select className="select" value={form.property_type} onChange={(e) => set('property_type', e.target.value)}>
+                    {PROPERTY_TYPES.map((t) => <option key={t} value={t}>{t || 'Select...'}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="label">Real Estate Asking Price</label>
+                  <input className="input" type="number" value={form.real_estate_asking_price} onChange={(e) => set('real_estate_asking_price', e.target.value)} placeholder="If priced separately" />
+                </div>
+              </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
                 <div>
                   <label className="label">Property Value</label>

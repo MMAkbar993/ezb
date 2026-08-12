@@ -38,8 +38,8 @@ export const WITHDRAWN = 'withdrawn'
 export const STATUS_STYLE: Record<string, { label: string; color: string; bg: string }> = {
   draft: { label: 'Draft', color: '#7a7a8a', bg: '#f3f3f6' },
   active: { label: 'Active', color: '#16a34a', bg: '#e8f7ee' },
-  under_loi: { label: 'Under LOI', color: '#b45309', bg: '#fdf3e3' },
-  closed: { label: 'Closed', color: '#1a1a2e', bg: '#ece8f5' },
+  under_loi: { label: 'Under Contract', color: '#b45309', bg: '#fdf3e3' },
+  closed: { label: 'Sold', color: '#1a1a2e', bg: '#ece8f5' },
   withdrawn: { label: 'Withdrawn', color: '#dc2626', bg: '#fdeaea' },
 }
 

@@ -64,7 +64,10 @@ export interface SearchFilters {
 
 export async function fetchMarketplaceStats(): Promise<MarketplaceStats> {
   const supabase = await getClient()
-  const { data, error } = await supabase.from(FEED).select('asking_price, industry')
+  const [{ data, error }, { data: soldRow }] = await Promise.all([
+    supabase.from(FEED).select('asking_price, industry'),
+    supabase.from('public_deal_stats').select('total_businesses_sold').single(),
+  ])
   if (error || !data) return { totalListings: 0, avgAsking: 0, totalBusinessesSold: 0, industries: 0 }
 
   const prices = data.map((l: any) => l.asking_price).filter((p: any) => typeof p === 'number') as number[]
@@ -72,7 +75,7 @@ export async function fetchMarketplaceStats(): Promise<MarketplaceStats> {
   return {
     totalListings: data.length,
     avgAsking: prices.length ? Math.round(prices.reduce((a, b) => a + b, 0) / prices.length) : 0,
-    totalBusinessesSold: 128, // demo metric — replace with real closed-deal count
+    totalBusinessesSold: (soldRow as any)?.total_businesses_sold ?? 0,
     industries,
   }
 }

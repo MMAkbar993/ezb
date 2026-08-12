@@ -3,13 +3,10 @@
 import { STATUS_STYLE } from '@/lib/workflow'
 
 // ---------------------------------------------------------------------------
-// StatusBadge — color-coded listing status badge.
+// StatusBadge — color-coded listing status badge. Labels come from
+// STATUS_STYLE (lib/workflow.ts) — the single source of truth for listing
+// status display text, so it never drifts out of sync across the app.
 // ---------------------------------------------------------------------------
-
-export const NICE_STATUS: Record<string, string> = {
-  draft: 'Draft', active: 'Active', under_loi: 'Under LOI',
-  closed: 'Closed', withdrawn: 'Withdrawn',
-}
 
 export default function StatusBadge({ status, size = 'md' }: { status: string | null | undefined; size?: 'sm' | 'md' | 'lg' }) {
   const s = status || 'draft'
@@ -24,7 +21,7 @@ export default function StatusBadge({ status, size = 'md' }: { status: string | 
       }}
     >
       <span style={{ width: 6, height: 6, borderRadius: 3, background: style.color, display: 'inline-block' }} />
-      {NICE_STATUS[status || 'draft'] || 'Unknown'}
+      {style.label}
     </span>
   )
 }

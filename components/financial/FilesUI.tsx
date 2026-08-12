@@ -5,12 +5,12 @@
 // for the Financial Files system.
 // =============================================================================
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import {
   FileKind, FILE_ICON, FILE_COLOR, FILE_LABEL,
   FinancialCategory, CATEGORY_LABELS, CATEGORY_COLORS,
   FinancialStatus, STATUS_LABELS, STATUS_COLORS,
-  previewKind,
+  previewKind, getSignedFileUrl,
 } from '@/lib/financialFiles'
 
 // ---------------------------------------------------------------------------
@@ -83,17 +83,35 @@ export function StatusPill({ status }: { status: FinancialStatus }) {
 export function FilePreviewModal({
   doc, onClose,
 }: {
-  doc: { file_name: string; file_url: string; file_kind: FileKind } | null
+  doc: { file_name: string; file_url: string; file_kind: FileKind; storage_path?: string | null } | null
   onClose: () => void
 }) {
+  const [resolvedUrl, setResolvedUrl] = useState<string | null>(null)
+  const [resolving, setResolving] = useState(false)
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  // Financial documents live in a private bucket — resolve a short-lived
+  // signed URL for whichever document is open, rather than relying on the
+  // (no longer functional) permanent public URL.
+  useEffect(() => {
+    let cancelled = false
+    setResolvedUrl(null)
+    if (!doc) return
+    setResolving(true)
+    getSignedFileUrl(doc.storage_path).then((url) => {
+      if (!cancelled) { setResolvedUrl(url || doc.file_url); setResolving(false) }
+    })
+    return () => { cancelled = true }
+  }, [doc?.storage_path, doc?.file_url])
+
   if (!doc) return null
   const kind = previewKind(doc.file_kind)
+  const url = resolvedUrl || ''
 
   return (
     <div
@@ -119,13 +137,14 @@ export function FilePreviewModal({
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <a
-              href={doc.file_url}
+              href={url || undefined}
               download={doc.file_name}
               target="_blank"
               rel="noreferrer"
-              style={{ background: 'var(--gold)', color: 'var(--navy)', fontWeight: 700, fontSize: 12.5, borderRadius: 6, padding: '7px 14px', textDecoration: 'none' }}
+              aria-disabled={!url}
+              style={{ background: 'var(--gold)', color: 'var(--navy)', fontWeight: 700, fontSize: 12.5, borderRadius: 6, padding: '7px 14px', textDecoration: 'none', opacity: url ? 1 : 0.5, pointerEvents: url ? 'auto' : 'none' }}
             >
-              ↓ Download
+              {resolving ? 'Preparing…' : '↓ Download'}
             </a>
             <button onClick={onClose} style={{ background: 'transparent', border: 'none', color: '#fff', fontSize: 20, cursor: 'pointer', lineHeight: 1 }}>✕</button>
           </div>
@@ -134,12 +153,12 @@ export function FilePreviewModal({
         {/* Body */}
         <div style={{ flex: 1, overflow: 'auto', background: '#f0f0f4' }}>
           {kind === 'pdf' && (
-            <iframe src={doc.file_url} title={doc.file_name} style={{ width: '100%', height: '72vh', border: 'none', background: '#fff' }} />
+            url ? <iframe src={url} title={doc.file_name} style={{ width: '100%', height: '72vh', border: 'none', background: '#fff' }} /> : <div style={{ padding: 60, textAlign: 'center', color: 'var(--muted)' }}>Loading preview…</div>
           )}
           {kind === 'img' && (
             <div style={{ display: 'flex', justifyContent: 'center', padding: 20 }}>
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={doc.file_url} alt={doc.file_name} style={{ maxWidth: '100%', maxHeight: '72vh', objectFit: 'contain', borderRadius: 8, boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }} />
+              {url && <img src={url} alt={doc.file_name} style={{ maxWidth: '100%', maxHeight: '72vh', objectFit: 'contain', borderRadius: 8, boxShadow: '0 8px 30px rgba(0,0,0,0.2)' }} />}
             </div>
           )}
           {kind === 'none' && (
@@ -148,14 +167,14 @@ export function FilePreviewModal({
               <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--navy)', marginBottom: 6 }}>Preview not available for this file type</div>
               <div style={{ fontSize: 13 }}>Download the file to open it in its native app.</div>
               <a
-                href={doc.file_url}
+                href={url || undefined}
                 download={doc.file_name}
                 target="_blank"
                 rel="noreferrer"
                 className="btn-primary"
-                style={{ display: 'inline-block', marginTop: 16, textDecoration: 'none' }}
+                style={{ display: 'inline-block', marginTop: 16, textDecoration: 'none', opacity: url ? 1 : 0.5, pointerEvents: url ? 'auto' : 'none' }}
               >
-                ↓ Download
+                {resolving ? 'Preparing…' : '↓ Download'}
               </a>
             </div>
           )}

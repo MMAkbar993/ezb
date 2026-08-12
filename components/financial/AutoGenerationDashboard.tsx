@@ -7,8 +7,8 @@
 // =============================================================================
 
 import { useMemo, useState } from 'react'
-import { PIPELINE_STEPS, type AutoGenerateResult } from '@/lib/autoGenerateTypes'
-import type { FinancialDoc, FinancialStatus } from '@/lib/financialFiles'
+import { PIPELINE_STEPS, type AutoGenerateResult, type GeneratedArtifact } from '@/lib/autoGenerateTypes'
+import { getSignedFileUrl, type FinancialDoc, type FinancialStatus } from '@/lib/financialFiles'
 import { StatusPill } from '@/components/financial/FilesUI'
 
 type StageState = 'pending' | 'running' | 'done' | 'failed'
@@ -16,14 +16,44 @@ type StageState = 'pending' | 'running' | 'done' | 'failed'
 interface Props {
   /** Latest pipeline result (after a One-Click run). */
   result: AutoGenerateResult | null
-  /** All financial docs to reflect overall completion + failure state. */
+  /** Financial docs (already scoped to the selected listing) to reflect
+   * overall completion + failure state, and to recover download links for
+   * documents generated in a previous session (result is null on reload). */
   docs: FinancialDoc[]
   onRunAgain: () => void
   running: boolean
 }
 
 export default function AutoGenerationDashboard({ result, docs, onRunAgain, running }: Props) {
-  const [selected, setSelected] = useState<string | null>(result?.artifacts[0]?.docId ?? null)
+  // Reports are downloadable even after a page reload: fall back to the
+  // persisted `financial_documents` rows for any stage the live `result`
+  // doesn't cover (e.g. visiting the page again without re-running).
+  const artifacts = useMemo<GeneratedArtifact[]>(() => {
+    const fromResult = result?.artifacts || []
+    const covered = new Set(fromResult.map((a) => a.stage))
+    const fromDocs: GeneratedArtifact[] = PIPELINE_STEPS
+      .filter((step) => !covered.has(step.stage))
+      .map((step) => {
+        const match = docs
+          .filter((d) => d.category === 'generated_document' && d.status === step.status)
+          .sort((a, b) => (b.uploaded_at || '').localeCompare(a.uploaded_at || ''))[0]
+        if (!match || !match.file_url) return null
+        return {
+          stage: step.stage,
+          title: step.label.split(' (')[0],
+          fileName: match.file_name,
+          storagePath: match.storage_path || '',
+          publicUrl: match.file_url,
+          docId: match.id,
+          status: match.status,
+          statusLabel: step.label,
+        } as GeneratedArtifact
+      })
+      .filter((a): a is GeneratedArtifact => a !== null)
+    return [...fromResult, ...fromDocs]
+  }, [result, docs])
+
+  const [selected, setSelected] = useState<string | null>(artifacts[0]?.docId ?? null)
 
   // Derive per-stage state from the generated documents present in `docs`.
   const stages = useMemo(() => {
@@ -49,9 +79,31 @@ export default function AutoGenerationDashboard({ result, docs, onRunAgain, runn
     return { done, total: stages.length, pct: Math.round((done / stages.length) * 100) }
   }, [stages])
 
-  // Artifacts to preview/download
-  const artifacts = result?.artifacts || []
+  // Artifacts to preview/download (computed above, live run + persisted fallback)
   const selectedArtifact = artifacts.find((a) => a.docId === selected) || artifacts[0] || null
+  const [downloading, setDownloading] = useState<string | null>(null)
+
+  // Financial documents live in a private bucket now (no more permanent
+  // public URLs) — resolve a short-lived signed URL right before each
+  // download instead of baking one into the link ahead of time.
+  const triggerDownload = async (a: GeneratedArtifact) => {
+    setDownloading(a.docId)
+    const url = await getSignedFileUrl(a.storagePath)
+    setDownloading(null)
+    if (!url) return
+    const link = document.createElement('a')
+    link.href = `${url}${url.includes('?') ? '&' : '?'}download=${encodeURIComponent(a.fileName)}`
+    link.download = a.fileName
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+  }
+
+  const downloadAll = () => {
+    artifacts.forEach((a, i) => {
+      setTimeout(() => { triggerDownload(a) }, i * 400)
+    })
+  }
 
   return (
     <div style={{ border: '1px solid var(--line)', borderRadius: 14, overflow: 'hidden', background: '#fff' }}>
@@ -62,7 +114,11 @@ export default function AutoGenerationDashboard({ result, docs, onRunAgain, runn
             ⚙️ Auto-Generation Pipeline
           </div>
           <div style={{ fontSize: 12.5, color: '#c9c9d8', marginTop: 2 }}>
-            {result ? `Latest run for “${result.listingName}”` : 'No run yet — use Upload & Generate to start.'}
+            {result
+              ? `Latest run for “${result.listingName}”`
+              : artifacts.length > 0
+                ? 'Previously generated reports — download below, or run again to refresh.'
+                : 'No run yet — use Upload & Generate to start.'}
           </div>
         </div>
         <button
@@ -117,22 +173,32 @@ export default function AutoGenerationDashboard({ result, docs, onRunAgain, runn
       {/* Artifacts detail */}
       {artifacts.length > 0 && (
         <div style={{ padding: '0 18px 18px' }}>
-          <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--gold-dark)', fontWeight: 700, fontFamily: 'Georgia, serif', marginBottom: 10 }}>
-            Generated Documents
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.6, color: 'var(--gold-dark)', fontWeight: 700, fontFamily: 'Georgia, serif' }}>
+              Generated Documents
+            </div>
+            {artifacts.length > 1 && (
+              <button
+                onClick={downloadAll}
+                style={{ background: 'var(--navy)', color: '#fff', border: 'none', borderRadius: 7, padding: '6px 12px', fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: 'inherit' }}
+              >
+                ⬇️ Download All
+              </button>
+            )}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: 10 }}>
             {artifacts.map((a) => (
-              <a
+              <button
                 key={a.docId}
-                href={a.publicUrl}
-                target="_blank"
-                rel="noreferrer"
-                onClick={() => setSelected(a.docId)}
+                type="button"
+                onClick={() => { setSelected(a.docId); triggerDownload(a) }}
+                disabled={downloading === a.docId}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px',
-                  border: '1px solid var(--line)', borderRadius: 10, textDecoration: 'none',
+                  display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', textAlign: 'left',
+                  border: '1px solid var(--line)', borderRadius: 10, cursor: downloading === a.docId ? 'wait' : 'pointer',
                   background: selectedArtifact?.docId === a.docId ? 'rgba(201,168,76,0.10)' : '#fff',
                   borderLeft: `4px solid ${a.stage === 'recast' ? '#a8872f' : a.stage === 'bov' ? '#0f3460' : a.stage === 'cim' ? '#1a3a8f' : '#0e7490'}`,
+                  font: 'inherit',
                 }}
               >
                 <span style={{ fontSize: 24 }}>{PIPELINE_STEPS.find((s) => s.stage === a.stage)?.icon || '📄'}</span>
@@ -140,9 +206,9 @@ export default function AutoGenerationDashboard({ result, docs, onRunAgain, runn
                   <div style={{ fontWeight: 700, color: 'var(--navy)', fontSize: 13.5, fontFamily: 'Georgia, serif', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }} title={a.fileName}>
                     {a.title.split(' — ')[1] || a.fileName}
                   </div>
-                  <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2 }}>{a.statusLabel} · ⬇️ open PDF</div>
+                  <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2 }}>{a.statusLabel} · {downloading === a.docId ? 'preparing…' : '⬇️ download PDF'}</div>
                 </div>
-              </a>
+              </button>
             ))}
           </div>
           <div style={{ display: 'flex', gap: 8, marginTop: 14, flexWrap: 'wrap' }}>

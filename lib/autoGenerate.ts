@@ -33,12 +33,17 @@ import { exportRecastToPdf, exportBovToPdf, exportCimToPdf, exportBliToPdf } fro
 import {
   buildFinancialHistory,
   computeFinancialMetrics,
-  extractFinancialCsv,
   groupUploadedDocs,
-  type ExtractedFinancialRow,
 } from '@/lib/financialExtractor'
-import { FF_BUCKET, type FinancialStatus, type FinancialDoc } from '@/lib/financialFiles'
-import { complete, isClaudeConfigured } from '@/lib/claude/client'
+import type { FinancialStatus, FinancialDoc } from '@/lib/financialFiles'
+// Imported from the boundary-neutral constants module, not from
+// lib/financialFiles.ts (which is 'use client') — see lib/storageBuckets.ts
+// for why that distinction matters for a server-only module like this one.
+import { FF_BUCKET } from '@/lib/storageBuckets'
+import { analyzeDocumentText, detectUniversalDocType } from '@/lib/ai/documentAnalyzer'
+import { extractDocumentText } from '@/lib/ai/textExtract'
+import { mergeAnalyses, aiYearsToRecastInput, type AiExtractionOutput } from '@/lib/ai/financialExtractor'
+import type { DocumentAnalysis } from '@/lib/ai/types'
 import type {
   PipelineStage,
   GeneratedArtifact,
@@ -61,80 +66,54 @@ function slugify(name: string): string {
 }
 
 // ---------------------------------------------------------------------------
-// Financial extraction — Claude-backed when configured, else heuristic/CSV.
+// Financial extraction — reads the ACTUAL content of every uploaded source
+// document (tax returns, P&L / financial statements, balance sheets, bank
+// statements): download from storage, extract text, have Claude analyze
+// each one, then combine them into a single broker-grade figure set (same
+// merge used by the Universal Financial Intelligence route). This is what
+// "P&L and balance sheets need to be recast... with all those financial
+// combined" means in practice — every uploaded document folds into one
+// normalized history instead of being ignored in favor of guesswork.
+// Falls back to nothing (caller uses the listing's own manually entered
+// figures) when no document could be read — never fabricates numbers.
 // ---------------------------------------------------------------------------
-interface ExtractedData {
-  rows: ExtractedFinancialRow[]
-  notes: string
-}
-
-async function extractFinancials(
+async function extractFromDocuments(
+  supabase: NonNullable<ReturnType<typeof createServerClient>>,
   listing: Listing,
   docs: FinancialDoc[],
-): Promise<ExtractedData> {
-  const notes: string[] = []
-  const rows: ExtractedFinancialRow[] = []
+): Promise<{ ext: AiExtractionOutput | null; notes: string }> {
+  const analyses: DocumentAnalysis[] = []
 
-  // 1) Try CSV/TSV parsing from any source docs we can fetch as text.
-  //    (In practice source uploads are PDFs/Excel; CSV is the parseable case.)
-  const csv = docs.find((d) => /\.(csv|tsv)$/i.test(d.file_name || ''))
-  if (csv?.file_url) {
+  for (const doc of docs) {
+    if (!doc.storage_path) continue
     try {
-      const res = await fetch(csv.file_url, { signal: AbortSignal.timeout(8000) })
-      if (res.ok) {
-        const text = await res.text()
-        const parsed = extractFinancialCsv(text, new Date().getFullYear() - 1)
-        if (parsed.length) {
-          rows.push(...parsed)
-          notes.push(`Extracted ${parsed.length} fiscal year row(s) from ${csv.file_name}.`)
-        }
-      }
-    } catch {
-      /* non-fatal */
-    }
-  }
-
-  // 2) Claude-backed extraction — asks the model to produce a tight JSON
-  //    summary of the listing earnings (+ any financial file names present).
-  //    Deterministic generators still build the documents; this only enriches.
-  if (isClaudeConfigured() && !rows.length) {
-    const fileList = docs
-      .filter((d) => d.category !== 'generated_document')
-      .map((d) => d.file_name)
-    try {
-      const contextText = [
-        `Listing: ${listing.business_name || 'Business'}`, 
-        `Industry: ${listing.industry || 'unknown'}`, 
-        `Annual revenue: ${listing.annual_revenue ?? 'unknown'}`, 
-        `SDE: ${listing.sde ?? 'unknown'}`, 
-        `EBITDA: ${listing.ebitda ?? 'unknown'}`, 
-        `Uploaded financial files: ${fileList.length ? fileList.join(', ') : 'none'}`,
-      ].join('\n')
-      const { data } = await complete({
-        context: { kind: 'document', entityId: listing.id, text: contextText },
-        system:
-          'You extract normalized owner-earnings data from brokerage financial files. ' +
-          'Return ONLY a compact JSON object with an optional "years" array ' +
-          '[{year, revenue, sde, ebitda}] and an optional "notes" string. ' +
-          'Do not fabricate numbers that are not provided.',
-        jsonMode: true,
-        maxTokens: 700,
+      const { data: blob, error: dlErr } = await supabase.storage.from(FF_BUCKET).download(doc.storage_path)
+      if (dlErr || !blob) continue
+      const buf = Buffer.from(await blob.arrayBuffer())
+      const extracted = await extractDocumentText({ fileName: doc.file_name, mime: doc.mime_type, data: buf })
+      if (!extracted.text.trim()) continue
+      const analysis = await analyzeDocumentText({
+        fileName: doc.file_name,
+        text: extracted.text,
+        hints: { guessedType: detectUniversalDocType(doc.file_name) },
       })
-      const years = (data?.years as { year: number; revenue?: number; sde?: number; ebitda?: number }[] | undefined) || []
-      if (years.length) {
-        rows.push(...years.map((y) => ({ year: y.year, revenue: y.revenue, netIncome: y.sde ?? y.ebitda })))
-        notes.push('Claude-assisted earnings extraction applied.')
-      }
+      analyses.push(analysis)
     } catch {
-      /* non-fatal */
+      /* unreadable/failed doc — skip it, non-fatal */
     }
   }
 
-  if (!rows.length) {
-    notes.push('No parseable financial detail found — derived a conservative 3-year history from listing figures.')
+  if (!analyses.length) {
+    return { ext: null, notes: 'No financial document content could be read — used the listing’s own figures.' }
   }
 
-  return { rows, notes: notes.join(' ') }
+  const ext = mergeAnalyses({
+    listingId: listing.id,
+    listingName: listing.business_name || 'Business',
+    analyses,
+    askingPrice: listing.asking_price || 0,
+  })
+  return { ext, notes: `Extracted and combined ${analyses.length} source document(s) (P&L, balance sheet, tax return, bank statements) into the recast.` }
 }
 
 // ---------------------------------------------------------------------------
@@ -241,12 +220,32 @@ export async function runAutoGeneration(input: {
   const sources = ((sourceDocs as FinancialDoc[] | null) || []).filter((d) => d.category !== 'generated_document')
   const grouped = groupUploadedDocs(sources)
 
-  // 3) Extract financial data (Claude / CSV / heuristic)
-  const extraction = await extractFinancials(L, sources)
-  if (extraction.notes) notes.push(extraction.notes)
+  // 3) Extract financial data from the actual content of every uploaded
+  //    source document (P&L, balance sheet, tax return, bank statements),
+  //    combined into one figure set.
+  const { ext, notes: extractNotes } = await extractFromDocuments(supabase, L, sources)
+  if (extractNotes) notes.push(extractNotes)
 
-  // 4) Build 3-year financial history from listing + extracted rows
-  const history: YearFinancials[] = buildFinancialHistory(L, extraction.rows)
+  // 4) Build 3-year financial history: prefer the real extracted figures;
+  //    fall back to the listing's own manually entered numbers only when
+  //    nothing could be read from the uploaded documents.
+  const history: YearFinancials[] = ext && ext.revenueByYear.length
+    ? aiYearsToRecastInput(ext)
+    : buildFinancialHistory(L, [])
+
+  // Enrich the listing snapshot fed into BOV/CIM/BLI with the extracted
+  // figures wherever the listing itself has no manually entered value — so
+  // a business whose revenue/SDE/EBITDA were never typed into the listing
+  // (e.g. uploaded via "New business, not listed yet") still produces
+  // documents grounded in its real uploaded financials.
+  const L2: Listing = ext
+    ? {
+        ...L,
+        annual_revenue: L.annual_revenue ?? (ext.revenueTotal || null),
+        sde: L.sde ?? (ext.sde || null),
+        ebitda: L.ebitda ?? (ext.ebitda || null),
+      }
+    : L
 
   // 5) RECAST
   try {
@@ -277,7 +276,7 @@ export async function runAutoGeneration(input: {
 
   // 6) BOV
   try {
-    const bov = generateBovContent(L)
+    const bov = generateBovContent(L2)
     const bytes = exportBovToPdf(bov, { returnBytes: true })
     if (bytes) {
       const art = await saveGeneratedDoc({
@@ -296,7 +295,7 @@ export async function runAutoGeneration(input: {
 
   // 7) CIM
   try {
-    const cim = generateCimContent(L)
+    const cim = generateCimContent(L2)
     const bytes = exportCimToPdf(cim, { returnBytes: true })
     if (bytes) {
       const art = await saveGeneratedDoc({
@@ -315,7 +314,7 @@ export async function runAutoGeneration(input: {
 
   // 8) BLI
   try {
-    const bli = generateBliContent(L)
+    const bli = generateBliContent(L2)
     const bytes = exportBliToPdf(bli, { returnBytes: true })
     if (bytes) {
       const art = await saveGeneratedDoc({
