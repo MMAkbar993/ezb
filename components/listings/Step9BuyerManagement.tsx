@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { StepShell, stepField, stepLabel, stepBtn } from '@/components/listings/StepShell'
 import { fetchBuyers, addBuyer, updateBuyer, completeStep, recordLOI } from '@/lib/workflow'
 import StatusBadge from '@/components/listings/StatusBadge'
+import BuyerInquiriesList from '@/components/listings/BuyerInquiriesList'
 
 // ---------------------------------------------------------------------------
 // Step 9 — Buyer Management: NDAs, financial qualification, primary buyer.
@@ -92,6 +93,14 @@ export default function Step9BuyerManagement({ listingId, onNext, onAgreementCha
           )}
         </div>
       ))}
+
+      <div style={{ marginTop: 28, paddingTop: 24, borderTop: '1px solid var(--line)' }}>
+        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy)', marginBottom: 4 }}>Buyer Inquiries (public NDA gate)</div>
+        <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 12px' }}>
+          Buyers who signed the NDA and Buyer Profile Form on the public listing page to unlock financials — a real, timestamped record, separate from the manual tracker above.
+        </p>
+        <BuyerInquiriesList listingId={listingId} />
+      </div>
     </StepShell>
   )
 }

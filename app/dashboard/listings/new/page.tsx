@@ -10,10 +10,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import AppShell from '@/components/layout/AppShell'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
-import { createListing } from '@/lib/listings'
+import { createListing, type Listing } from '@/lib/listings'
 import { startWorkflow } from '@/lib/workflow'
 import { matchBuyerLeads, UnifiedLead } from '@/lib/leads2'
 import MatchedBuyersModal from '@/components/leads/MatchedBuyersModal'
+import MultiFileDropzone from '@/components/financial/MultiFileDropzone'
 
 const numOrNull = (s: string): number | null => (s === '' ? null : Number(s))
 
@@ -38,7 +39,8 @@ function NewListingForm() {
   })
   const [busy, setBusy] = useState(false)
   const [matched, setMatched] = useState<UnifiedLead[] | null>(null)
-  const [justCreated, setJustCreated] = useState<any>(null)
+  const [justCreated, setJustCreated] = useState<Listing | null>(null)
+  const [stage, setStage] = useState<'form' | 'financials'>('form')
 
   const set = (k: keyof typeof form, v: string) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -65,27 +67,33 @@ function NewListingForm() {
       setJustCreated(listing)
       if (matches.length > 0) {
         setMatched(matches)
-        return // hold: show the popup before navigating away
+        return // hold: show the popup before moving to the financials step
       }
-      await startWorkflow(listing.id)
-      toast('Listing created — starting workflow')
-      router.push(`/dashboard/listings/${listing.id}/workflow`)
+      setBusy(false)
+      setStage('financials')
     } catch (err: any) {
       toast(err.message || 'Failed to create listing', 'error')
       setBusy(false)
     }
   }
 
-  const handleMatchesDone = async (goToWorkflow: boolean) => {
-    if (!justCreated) return
+  const handleMatchesDone = (goToWorkflow: boolean) => {
     setMatched(null)
+    setBusy(false)
     if (goToWorkflow) {
-      try { await startWorkflow(justCreated.id) } catch {}
-      router.push(`/dashboard/listings/${justCreated.id}/workflow`)
+      setStage('financials')
     } else {
       toast('Listing created')
       router.push('/dashboard/listings')
     }
+  }
+
+  const continueToWorkflow = async () => {
+    if (!justCreated) return
+    setBusy(true)
+    try { await startWorkflow(justCreated.id) } catch {}
+    toast('Listing created — starting workflow')
+    router.push(`/dashboard/listings/${justCreated.id}/workflow`)
   }
 
   const input = (k: keyof typeof form, placeholder: string, label: string, multiline = false) => (
@@ -98,6 +106,36 @@ function NewListingForm() {
       )}
     </label>
   )
+
+  if (stage === 'financials' && justCreated) {
+    return (
+      <div>
+        <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 26, color: 'var(--navy)', marginBottom: 6 }}>Add Financial Documents</h1>
+        <p style={{ color: 'var(--muted)', marginBottom: 24 }}>
+          Optional — attach whatever you already have for "{justCreated.business_name}" (tax returns, P&amp;L, bank statements). Anything you drop
+          here is picked up automatically later when you generate Recast/BOV/CIM/BLI. Don't have documents yet? Skip this and add them anytime from the Financial tab.
+        </p>
+
+        <div style={{ padding: '28px 32px', background: '#fff', border: '1px solid var(--line)', borderRadius: 14 }}>
+          <MultiFileDropzone
+            parentId={justCreated.id}
+            dealId={null}
+            listingId={justCreated.id}
+            onUploaded={() => {}}
+          />
+        </div>
+
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 20 }}>
+          <button onClick={continueToWorkflow} disabled={busy} className="btn btn-ghost">
+            Skip for now
+          </button>
+          <button onClick={continueToWorkflow} disabled={busy} style={{ padding: '12px 22px', background: 'var(--navy)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>
+            {busy ? 'Starting…' : 'Continue to workflow →'}
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div>
