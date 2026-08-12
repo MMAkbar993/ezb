@@ -286,15 +286,6 @@ export async function uploadDocument(
     return { success: false, error: `File must be less than ${MAX_SIZE / 1024 / 1024}MB` }
   }
 
-  // Verify the bucket exists first (create in Supabase Storage)
-  const { data: bucket, error: bucketError } = await supabase.storage.getBucket(DOCUMENT_BUCKET)
-  if (bucketError || !bucket) {
-    return {
-      success: false,
-      error: `Storage bucket '${DOCUMENT_BUCKET}' not found. Create it: Supabase -> Storage -> New bucket -> name: ${DOCUMENT_BUCKET}`,
-    }
-  }
-
   const prefix = target.source === 'deal' ? `deal/${target.parentId}` : `listing/${target.parentId}`
   const safeCategory = category.replace(/[^a-z0-9-_]+/gi, '-').toLowerCase()
   const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')

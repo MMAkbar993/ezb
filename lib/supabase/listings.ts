@@ -17,19 +17,6 @@ export interface ListingImageResult {
   error?: string
 }
 
-/**
- * Check whether the 'listing_images' bucket exists.
- * Supabase storage throws 400/404 "bucket not found" if it does not,
- * so we surface a helpful message instead of a cryptic one.
- */
-export async function ensureListingBucket(): Promise<{ exists: boolean; error?: string }> {
-  const { data, error } = await supabase.storage.getBucket(BUCKET)
-  if (error) {
-    return { exists: false, error: error.message }
-  }
-  return { exists: !!data }
-}
-
 export async function uploadListingImage(
   listingId: string,
   file: File,
@@ -46,16 +33,7 @@ export async function uploadListingImage(
     return { success: false, error: 'Only JPG, PNG, and WebP images are allowed' }
   }
 
-  // 2. Confirm the bucket exists — give a clear error if not
-  const bucket = await ensureListingBucket()
-  if (!bucket.exists) {
-    return {
-      success: false,
-      error: `Storage bucket '${BUCKET}' not found. Create it in Supabase: Dashboard -> Storage -> New bucket -> name: ${BUCKET} -> Public. (Detail: ${bucket.error || 'missing'})`,
-    }
-  }
-
-  // 3. Derive path: listingId/image-<index>.<ext>
+  // 2. Derive path: listingId/image-<index>.<ext>
   const ext = (file.name.split('.').pop() || 'jpg').toLowerCase()
   const path = `${listingId}/image-${index}.${ext}`
 
