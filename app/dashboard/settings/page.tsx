@@ -3,6 +3,7 @@
 import AppShell from '@/components/layout/AppShell'
 import EmailSettings from '@/components/settings/EmailSettings'
 import LicenseSettings from '@/components/settings/LicenseSettings'
+import TeamManagement from '@/components/settings/TeamManagement'
 import BusinessCardBrandSettings from '@/components/cards/BusinessCardBrandSettings'
 import AgencyBrandAdmin from '@/components/cards/AgencyBrandAdmin'
 import { ToastProvider } from '@/components/ui/Toast'
@@ -21,6 +22,7 @@ export default function SettingsPage() {
             Settings
           </h1>
           <p style={{ color: 'var(--muted)', marginBottom: 24 }}>Manage your notification, email, licensing, and branding preferences.</p>
+          <TeamManagement />
           <EmailSettings />
           <div style={{ height: 24 }} />
           <LicenseSettings />

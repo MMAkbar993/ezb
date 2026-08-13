@@ -1,29 +1,38 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ToastProvider } from '@/components/ui/Toast'
 import SearchBar from '@/components/search/SearchBar'
+import { supabase } from '@/lib/supabase/client'
+import { RoleContext, deriveRoleState, Role } from '@/lib/auth/RoleContext'
 
-const NAV = [
+interface NavItem {
+  href: string
+  label: string
+  icon: string
+  minRole?: Role // undefined = everyone; 'broker' = broker+admin; 'admin' = admin only (admin === owner, see lib/auth/RoleContext.tsx)
+}
+
+const NAV: NavItem[] = [
   { href: '/dashboard', label: 'Dashboard', icon: '📊' },
-  { href: '/dashboard/command-center', label: 'Command Center', icon: '🎛️' },
-  { href: '/dashboard/analytics', label: 'Analytics', icon: '📈' },
+  { href: '/dashboard/command-center', label: 'Command Center', icon: '🎛️', minRole: 'broker' },
+  { href: '/dashboard/analytics', label: 'Analytics', icon: '📈', minRole: 'broker' },
   { href: '/pipeline', label: 'Deal Pipeline', icon: '🔄' },
   { href: '/listings', label: 'Listings', icon: '🏢' },
   { href: '/dashboard/listings/new', label: 'New Listing', icon: '➕' },
-  { href: '/dashboard/performance', label: 'Performance', icon: '🏆' },
+  { href: '/dashboard/performance', label: 'Performance', icon: '🏆', minRole: 'broker' },
   { href: '/dashboard/financial', label: 'Financial', icon: '🗂️' },
   { href: '/leads', label: 'Lead Management', icon: '🎯' },
   { href: '/dashboard/search', label: 'Search', icon: '🔍' },
   { href: '/documents', label: 'Documents', icon: '📁' },
   { href: '/due-diligence', label: 'Due Diligence', icon: '🔍' },
   { href: '/dashboard/portal', label: 'Client Portal', icon: '👥' },
-  { href: '/agencies', label: 'Agency Admin', icon: '🏛️' },
-  { href: '/billing', label: 'Billing', icon: '💳' },
-  { href: '/dashboard/social', label: 'Social Media', icon: '📣' },
-  { href: '/dashboard/newspaper', label: 'Weekly Newspaper', icon: '📰' },
+  { href: '/agencies', label: 'Agency Admin', icon: '🏛️', minRole: 'admin' },
+  { href: '/billing', label: 'Billing', icon: '💳', minRole: 'admin' },
+  { href: '/dashboard/social', label: 'Social Media', icon: '📣', minRole: 'broker' },
+  { href: '/dashboard/newspaper', label: 'Weekly Newspaper', icon: '📰', minRole: 'broker' },
   { href: '/dashboard/training', label: 'Training', icon: '🎓' },
   { href: '/dashboard/onboarding', label: 'Onboarding', icon: '🚀' },
   { href: '/dashboard/certificates', label: 'Certificates', icon: '🏆' },
@@ -32,6 +41,8 @@ const NAV = [
   { href: '/dashboard/marketing', label: 'Marketing', icon: '🖨️' },
   { href: '/dashboard/settings', label: 'Settings', icon: '⚙️' },
 ]
+
+const ROLE_RANK: Record<Role, number> = { agent: 0, broker: 1, admin: 2 }
 
 export default function AppShell({
   active,
@@ -43,7 +54,42 @@ export default function AppShell({
   const pathname = usePathname()
   const [open, setOpen] = useState(false)
 
+  // Self-contained role fetch: AppShell is rendered by pages both under
+  // app/dashboard/layout.tsx (which already provides RoleContext) and by
+  // several top-level pages that aren't (e.g. /pipeline, /listings, /leads,
+  // /billing, /agencies) — fetching here directly makes nav gating correct
+  // on every page that renders AppShell, not just the ones nested under a
+  // layout that happens to populate the context.
+  const [role, setRole] = useState<Role | null>(null)
+  const [roleLoading, setRoleLoading] = useState(true)
+
+  useEffect(() => {
+    let cancelled = false
+    supabase.auth.getUser().then(async ({ data }) => {
+      const uid = data.user?.id
+      if (!uid) {
+        if (!cancelled) setRoleLoading(false)
+        return
+      }
+      const { data: prof } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle()
+      if (!cancelled) {
+        setRole((prof?.role as Role) || 'agent')
+        setRoleLoading(false)
+      }
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  const roleState = deriveRoleState(role, roleLoading)
+
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
+
+  // While role is still loading, show everything — RLS is the real
+  // enforcement layer underneath; this filter is only for a clean
+  // minimum-access UI, not the security boundary itself.
+  const visibleNav = roleLoading ? NAV : NAV.filter((item) => !item.minRole || ROLE_RANK[roleState.role] >= ROLE_RANK[item.minRole])
 
   return (
     <ToastProvider>
@@ -93,7 +139,7 @@ export default function AppShell({
 
           {/* Nav */}
           <nav style={{ flex: 1, padding: '14px 12px', overflowY: 'auto' }}>
-            {NAV.map((item) => {
+            {visibleNav.map((item) => {
               const activeItem = isActive(item.href)
               return (
                 <Link
@@ -133,7 +179,7 @@ export default function AppShell({
             </div>
           </div>
           <div style={{ padding: '32px 40px' }}>
-            {children}
+            <RoleContext.Provider value={roleState}>{children}</RoleContext.Provider>
           </div>
         </main>
       </div>

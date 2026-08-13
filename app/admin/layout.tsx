@@ -1,26 +1,25 @@
 'use client'
 
+// ---------------------------------------------------------------------------
+// Auth + role guard for every /admin/** route (platform trial/billing admin
+// pages). These had zero protection before this file existed — reachable by
+// anyone, logged in or not (app/admin/trial-settings/page.tsx had a literal
+// "TODO: wrap with an admin gate in production"). Mirrors the session-check
+// pattern from app/dashboard/layout.tsx (sessions live in localStorage, not
+// cookies, so middleware.ts can't do this check server-side), plus an
+// additional profiles.role === 'admin' check — non-admins are bounced to
+// /dashboard rather than /auth, since they may well have a valid session.
+// ---------------------------------------------------------------------------
+
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase/client'
 import { RoleContext, deriveRoleState, Role } from '@/lib/auth/RoleContext'
 
-// ---------------------------------------------------------------------------
-// Auth guard for every /dashboard/** route. This app stores sessions in
-// localStorage (no cookie-based session), so middleware.ts cannot check auth
-// server-side — its PROTECTED_PREFIXES block has always been commented out,
-// meaning /dashboard (and every page under it) rendered its full shell for
-// anyone, logged in or not, before this layout existed. RLS still protects
-// the underlying data either way, but the UI itself was reachable with no
-// session at all. This performs the equivalent check client-side, before any
-// dashboard page content renders.
-// ---------------------------------------------------------------------------
-
-export default function DashboardLayout({ children }: { children: React.ReactNode }) {
+export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
   const [checked, setChecked] = useState(false)
   const [role, setRole] = useState<Role | null>(null)
-  const [roleLoading, setRoleLoading] = useState(true)
 
   useEffect(() => {
     let cancelled = false
@@ -30,22 +29,19 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         router.replace('/auth')
         return
       }
-      setChecked(true)
       const uid = data.session.user.id
       const { data: prof } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle()
-      if (!cancelled) {
-        setRole((prof?.role as Role) || 'agent')
-        setRoleLoading(false)
+      if (cancelled) return
+      if (prof?.role !== 'admin') {
+        router.replace('/dashboard')
+        return
       }
-    })
-
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!session) router.replace('/auth')
+      setRole('admin')
+      setChecked(true)
     })
 
     return () => {
       cancelled = true
-      sub.subscription.unsubscribe()
     }
   }, [router])
 
@@ -60,5 +56,5 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
     )
   }
 
-  return <RoleContext.Provider value={deriveRoleState(role, roleLoading)}>{children}</RoleContext.Provider>
+  return <RoleContext.Provider value={deriveRoleState(role, false)}>{children}</RoleContext.Provider>
 }
