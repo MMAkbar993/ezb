@@ -19,7 +19,7 @@ export default function ListingDetailInteractive({ listing }: { listing: PublicL
   const router = useRouter()
   const [activeImage, setActiveImage] = useState(0)
   const [showContact, setShowContact] = useState(false)
-  const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' })
+  const [form, setForm] = useState({ name: '', email: '', phone: '', message: '', zip: '', fundsAvailable: '', timeframe: '' })
   const [submitting, setSubmitting] = useState(false)
 
   const gallery = [listing.primary_image_url, listing.featured_image_url, ...(listing.image_urls || [])].filter(Boolean) as string[]
@@ -31,10 +31,23 @@ export default function ListingDetailInteractive({ listing }: { listing: PublicL
       toast('Name and email are required', 'error')
       return
     }
+    if (listing.require_buyer_phone && !form.phone.trim()) {
+      toast('Phone number is required', 'error')
+      return
+    }
+    if (listing.require_buyer_zip && !form.zip.trim()) {
+      toast('ZIP code is required', 'error')
+      return
+    }
     setSubmitting(true)
     const res = await capturePublicLead({
       kind: 'buyer', name: form.name, email: form.email, phone: form.phone || undefined,
-      source: 'listing_detail', message: `Interested in: ${listing.business_name}`, listing_id: listing.id,
+      source: 'listing_detail',
+      message: `Interested in: ${listing.business_name}${form.message ? ' — ' + form.message : ''}`,
+      listing_id: listing.id,
+      zip: form.zip || undefined,
+      fundsAvailable: form.fundsAvailable || undefined,
+      timeframe: form.timeframe || undefined,
     })
     setSubmitting(false)
     if (res.ok) {
@@ -111,7 +124,23 @@ export default function ListingDetailInteractive({ listing }: { listing: PublicL
               <form onSubmit={submitLead} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                 <input className="input" placeholder="Full Name *" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required />
                 <input className="input" placeholder="Email *" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required />
-                <input className="input" placeholder="Phone" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} />
+                <input className="input" placeholder={listing.require_buyer_phone ? 'Phone *' : 'Phone'} value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} required={!!listing.require_buyer_phone} />
+                {listing.require_buyer_zip && (
+                  <input className="input" placeholder="ZIP Code *" value={form.zip} onChange={(e) => setForm({ ...form, zip: e.target.value })} required />
+                )}
+                {listing.ask_funds_available && (
+                  <input className="input" type="number" placeholder="Funds available for this purchase ($)" value={form.fundsAvailable} onChange={(e) => setForm({ ...form, fundsAvailable: e.target.value })} />
+                )}
+                {listing.ask_buyer_timeframe && (
+                  <select className="select" value={form.timeframe} onChange={(e) => setForm({ ...form, timeframe: e.target.value })}>
+                    <option value="">What's your timeframe?</option>
+                    <option value="Immediately">Immediately</option>
+                    <option value="1-3 months">1–3 months</option>
+                    <option value="3-6 months">3–6 months</option>
+                    <option value="6-12 months">6–12 months</option>
+                    <option value="Just researching">Just researching</option>
+                  </select>
+                )}
                 <textarea className="textarea" rows={3} placeholder="Tell us about your interest / financing ('say hi')" value={form.message} onChange={(e) => setForm({ ...form, message: e.target.value })} />
                 <button type="submit" className="btn btn-primary" disabled={submitting}>{submitting ? 'Sending...' : 'Send Request'}</button>
               </form>

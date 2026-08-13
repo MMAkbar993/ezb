@@ -44,6 +44,9 @@ export interface Listing {
   total_value: number | null
   // Operational details (apply regardless of real_estate_included)
   num_employees: number | null
+  num_employees_ft: number | null
+  num_employees_pt: number | null
+  num_employees_contractor: number | null
   num_owners: number | null
   business_square_footage: number | null
   lease_years_remaining: number | null
@@ -63,6 +66,13 @@ export interface Listing {
   real_estate_asking_price: number | null
   // BLI-only confidentiality — never affects CIM/BOV (see lib/bli.ts)
   bli_anonymize: boolean | null
+  // "Business is currently" status flags
+  is_absentee_owner: boolean | null
+  is_relocatable: boolean | null
+  is_home_based: boolean | null
+  is_franchise: boolean | null
+  website: string | null
+  website_confidential: boolean | null
 }
 
 export type ListingInput = Partial<Omit<Listing, 'id' | 'created_at' | 'updated_at'>>

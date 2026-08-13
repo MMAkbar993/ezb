@@ -6,8 +6,14 @@ import { publishListing, completeStep } from '@/lib/workflow'
 import { fetchListing } from '@/lib/listings'
 import {
   fetchPublicListingSettings, submitForReview, approveListing, revertToDraft,
-  publishToWebsite, unpublishFromWebsite, PublicListingSettings, ReviewStage,
+  publishToWebsite, unpublishFromWebsite, PublicListingSettings, ReviewStage, LocationExposure,
 } from '@/lib/publicListing'
+
+const LOCATION_EXPOSURE_LABEL: Record<LocationExposure, string> = {
+  general: 'General area only (e.g. "Charlotte, NC") — most confidential',
+  city_state: 'City & state (no street address)',
+  full_address: 'Full street address',
+}
 import StatusBadge from '@/components/listings/StatusBadge'
 
 // ---------------------------------------------------------------------------
@@ -30,7 +36,13 @@ export default function Step8ListBusiness({ listingId, onNext }: { listingId: st
   const [pub, setPub] = useState<PublicListingSettings | null>(null)
   const [pubBusy, setPubBusy] = useState(false)
   const [pubMsg, setPubMsg] = useState('')
-  const [form, setForm] = useState({ isConfidential: false, publicTitle: '', showFinancials: false, showExactLocation: false, isFeatured: false })
+  const [form, setForm] = useState<{
+    isConfidential: boolean; publicTitle: string; showFinancials: boolean; locationExposure: LocationExposure; isFeatured: boolean
+    requireBuyerPhone: boolean; requireBuyerZip: boolean; askFundsAvailable: boolean; askBuyerTimeframe: boolean
+  }>({
+    isConfidential: false, publicTitle: '', showFinancials: false, locationExposure: 'general', isFeatured: false,
+    requireBuyerPhone: false, requireBuyerZip: false, askFundsAvailable: false, askBuyerTimeframe: false,
+  })
 
   const load = async () => setListing(await fetchListing(listingId))
   const loadPublic = async () => {
@@ -38,7 +50,9 @@ export default function Step8ListBusiness({ listingId, onNext }: { listingId: st
     setPub(s)
     setForm({
       isConfidential: s.isConfidential, publicTitle: s.publicTitle || '',
-      showFinancials: s.showFinancials, showExactLocation: s.showExactLocation, isFeatured: s.isFeatured,
+      showFinancials: s.showFinancials, locationExposure: s.locationExposure, isFeatured: s.isFeatured,
+      requireBuyerPhone: s.requireBuyerPhone, requireBuyerZip: s.requireBuyerZip,
+      askFundsAvailable: s.askFundsAvailable, askBuyerTimeframe: s.askBuyerTimeframe,
     })
   }
   useEffect(() => { load(); loadPublic() }, [listingId])
@@ -71,8 +85,12 @@ export default function Step8ListBusiness({ listingId, onNext }: { listingId: st
       isConfidential: form.isConfidential,
       publicTitle: form.publicTitle || null,
       showFinancials: form.showFinancials,
-      showExactLocation: form.showExactLocation,
+      locationExposure: form.locationExposure,
       isFeatured: form.isFeatured,
+      requireBuyerPhone: form.requireBuyerPhone,
+      requireBuyerZip: form.requireBuyerZip,
+      askFundsAvailable: form.askFundsAvailable,
+      askBuyerTimeframe: form.askBuyerTimeframe,
     })
     setPubMsg(res.ok ? 'Published to public website ✓' : res.error || 'Publish failed')
     await loadPublic()
@@ -176,10 +194,16 @@ export default function Step8ListBusiness({ listingId, onNext }: { listingId: st
               </span>
             </label>
             <label style={stepLabel}>
-              <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 400 }}>
-                <input type="checkbox" checked={form.showExactLocation} onChange={(e) => setForm({ ...form, showExactLocation: e.target.checked })} />
-                Show exact address publicly
-              </span>
+              Location Confidentiality &amp; Search Exposure
+              <select
+                value={form.locationExposure}
+                onChange={(e) => setForm({ ...form, locationExposure: e.target.value as LocationExposure })}
+                style={stepField}
+              >
+                {(Object.keys(LOCATION_EXPOSURE_LABEL) as LocationExposure[]).map((k) => (
+                  <option key={k} value={k}>{LOCATION_EXPOSURE_LABEL[k]}</option>
+                ))}
+              </select>
             </label>
             <label style={stepLabel}>
               <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 400 }}>
@@ -199,6 +223,24 @@ export default function Step8ListBusiness({ listingId, onNext }: { listingId: st
               />
             </label>
           )}
+
+          <div style={{ marginTop: 18, paddingTop: 14, borderTop: '1px solid var(--line)' }}>
+            <div style={{ fontSize: 12.5, fontWeight: 700, color: 'var(--navy)', marginBottom: 4 }}>Buyer Email Response Options</div>
+            <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 10 }}>Requesting more information typically lowers the number of inquiries you receive.</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px' }}>
+              {([
+                ['requireBuyerPhone', "Require the buyer's phone number"],
+                ['requireBuyerZip', "Require the buyer's ZIP code"],
+                ['askFundsAvailable', 'Ask the available funds a buyer has'],
+                ['askBuyerTimeframe', 'Ask what timeframe the buyer has'],
+              ] as [keyof typeof form, string][]).map(([key, label]) => (
+                <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, color: 'var(--text)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form[key] as boolean} onChange={(e) => setForm({ ...form, [key]: e.target.checked })} />
+                  {label}
+                </label>
+              ))}
+            </div>
+          </div>
         </fieldset>
 
         <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginTop: 6 }}>

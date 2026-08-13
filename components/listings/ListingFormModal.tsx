@@ -25,7 +25,16 @@ interface FormState {
   reason_for_sale: string
   status: string
   num_employees: string
+  num_employees_ft: string
+  num_employees_pt: string
+  num_employees_contractor: string
   num_owners: string
+  is_absentee_owner: boolean
+  is_relocatable: boolean
+  is_home_based: boolean
+  is_franchise: boolean
+  website: string
+  website_confidential: boolean
   business_square_footage: string
   year_established: string
   hours_of_operation: string
@@ -70,7 +79,16 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
     reason_for_sale: listing?.reason_for_sale || '',
     status: listing?.status || 'active',
     num_employees: listing?.num_employees != null ? String(listing.num_employees) : '',
+    num_employees_ft: listing?.num_employees_ft != null ? String(listing.num_employees_ft) : '',
+    num_employees_pt: listing?.num_employees_pt != null ? String(listing.num_employees_pt) : '',
+    num_employees_contractor: listing?.num_employees_contractor != null ? String(listing.num_employees_contractor) : '',
     num_owners: listing?.num_owners != null ? String(listing.num_owners) : '',
+    is_absentee_owner: listing?.is_absentee_owner || false,
+    is_relocatable: listing?.is_relocatable || false,
+    is_home_based: listing?.is_home_based || false,
+    is_franchise: listing?.is_franchise || false,
+    website: listing?.website || '',
+    website_confidential: listing?.website_confidential || false,
     business_square_footage: listing?.business_square_footage != null ? String(listing.business_square_footage) : '',
     year_established: listing?.year_established != null ? String(listing.year_established) : '',
     hours_of_operation: listing?.hours_of_operation || '',
@@ -101,9 +119,20 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
 
   const set = <K extends keyof FormState>(k: K, v: FormState[K]) => setForm((f) => ({ ...f, [k]: v }))
 
+  // Total employees auto-sums from the FT/PT/Contractor breakdown whenever
+  // any of the three are filled in (matches BizBuySell's pattern) — falls
+  // back to the flat num_employees field for listings that predate the
+  // breakdown.
+  const employeeBreakdownUsed = form.num_employees_ft !== '' || form.num_employees_pt !== '' || form.num_employees_contractor !== ''
+  const employeeTotal = (Number(form.num_employees_ft) || 0) + (Number(form.num_employees_pt) || 0) + (Number(form.num_employees_contractor) || 0)
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.business_name.trim()) { setError('Business name is required'); return }
+    if (!form.asking_price.trim() && !form.sde.trim() && !form.ebitda.trim()) {
+      setError('Enter at least one of Asking Price, SDE, or EBITDA')
+      return
+    }
     setSubmitting(true)
     setError('')
     try {
@@ -125,7 +154,16 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
         ebitda: numOrNull(form.ebitda),
         reason_for_sale: form.reason_for_sale || null,
         status: form.status,
-        num_employees: numOrNull(form.num_employees),
+        num_employees: employeeBreakdownUsed ? employeeTotal : numOrNull(form.num_employees),
+        num_employees_ft: numOrNull(form.num_employees_ft),
+        num_employees_pt: numOrNull(form.num_employees_pt),
+        num_employees_contractor: numOrNull(form.num_employees_contractor),
+        is_absentee_owner: form.is_absentee_owner,
+        is_relocatable: form.is_relocatable,
+        is_home_based: form.is_home_based,
+        is_franchise: form.is_franchise,
+        website: form.website.trim() || null,
+        website_confidential: form.website_confidential,
         num_owners: numOrNull(form.num_owners),
         business_square_footage: numOrNull(form.business_square_footage),
         year_established: form.year_established ? Number(form.year_established) : null,
@@ -225,6 +263,7 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
             <textarea className="textarea" rows={4} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Business overview for the CIM executive summary..." />
           </div>
 
+          <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>Enter at least one of Asking Price, SDE, or EBITDA.</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
             <div>
               <label className="label">Asking Price</label>
@@ -249,13 +288,56 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
             <input className="input" value={form.reason_for_sale} onChange={(e) => set('reason_for_sale', e.target.value)} placeholder="e.g. Owner retirement" />
           </div>
 
+          <div style={{ marginBottom: 14, display: 'flex', gap: 12, alignItems: 'flex-end' }}>
+            <div style={{ flex: 1 }}>
+              <label className="label">Business Website</label>
+              <input className="input" value={form.website} onChange={(e) => set('website', e.target.value)} placeholder="e.g. https://example.com" />
+            </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, color: 'var(--text)', cursor: 'pointer', paddingBottom: 10, whiteSpace: 'nowrap' }}>
+              <input type="checkbox" checked={form.website_confidential} onChange={(e) => set('website_confidential', e.target.checked as any)} />
+              Keep website confidential
+            </label>
+          </div>
+
           <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 16, marginBottom: 20 }}>
             <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 1.2, color: 'var(--gold-dark)', fontWeight: 700, marginBottom: 12 }}>Business Operations</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div style={{ marginBottom: 4, fontSize: 12.5, color: 'var(--muted)', fontWeight: 600 }}>Business is currently:</div>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px 20px', marginBottom: 16 }}>
+              {([
+                ['is_absentee_owner', 'Absentee owner'],
+                ['is_relocatable', 'Relocatable'],
+                ['is_home_based', 'Home-based'],
+                ['is_franchise', 'Established franchise'],
+              ] as [keyof FormState, string][]).map(([key, label]) => (
+                <label key={key} style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13.5, color: 'var(--text)', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={form[key] as boolean} onChange={(e) => set(key, e.target.checked as any)} />
+                  {label}
+                </label>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 4 }}>
               <div>
-                <label className="label">Employees</label>
-                <input className="input" type="number" min="0" value={form.num_employees} onChange={(e) => set('num_employees', e.target.value)} placeholder="Not incl. owners" />
+                <label className="label">Full-Time Employees</label>
+                <input className="input" type="number" min="0" value={form.num_employees_ft} onChange={(e) => set('num_employees_ft', e.target.value)} placeholder="e.g. 10" />
               </div>
+              <div>
+                <label className="label">Part-Time Employees</label>
+                <input className="input" type="number" min="0" value={form.num_employees_pt} onChange={(e) => set('num_employees_pt', e.target.value)} placeholder="e.g. 5" />
+              </div>
+              <div>
+                <label className="label">Contractors</label>
+                <input className="input" type="number" min="0" value={form.num_employees_contractor} onChange={(e) => set('num_employees_contractor', e.target.value)} placeholder="e.g. 2" />
+              </div>
+            </div>
+            {employeeBreakdownUsed ? (
+              <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 12 }}>Total employees (auto): <strong style={{ color: 'var(--navy)' }}>{employeeTotal}</strong></div>
+            ) : (
+              <div style={{ marginBottom: 12 }}>
+                <label className="label">Total Employees (not incl. owners)</label>
+                <input className="input" type="number" min="0" value={form.num_employees} onChange={(e) => set('num_employees', e.target.value)} placeholder="Or fill in the breakdown above" />
+              </div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
               <div>
                 <label className="label">Owners Working in Business</label>
                 <input className="input" type="number" min="0" value={form.num_owners} onChange={(e) => set('num_owners', e.target.value)} />

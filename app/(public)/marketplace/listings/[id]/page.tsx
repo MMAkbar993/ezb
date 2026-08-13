@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { fetchListingById, PublicListing } from '@/lib/marketplace'
+import { fetchListingById, fetchBrokerByProfileId, PublicListing, PublicBroker } from '@/lib/marketplace'
 import ListingDetailInteractive from '@/components/public/ListingDetailInteractive'
 
 // ---------------------------------------------------------------------------
@@ -60,6 +60,7 @@ export async function generateMetadata({ params }: { params: { id: string } }): 
 export default async function ListingDetailPage({ params }: { params: { id: string } }) {
   const listing = await getListing(params.id)
   if (!listing) notFound()
+  const broker: PublicBroker | null = listing.broker_id ? await fetchBrokerByProfileId(listing.broker_id) : null
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -91,7 +92,32 @@ export default async function ListingDetailPage({ params }: { params: { id: stri
             <span style={{ background: '#f0ecdf', color: '#1a1a2e', padding: '4px 12px', borderRadius: 99, fontSize: 12, fontWeight: 700 }}>{listing.industry || 'Business'}</span>
           </div>
           <p style={{ color: '#666', fontSize: 15, margin: '8px 0 0' }}>{listing.headline}</p>
-          {listing.location_general && <p style={{ color: '#888', fontSize: 14, margin: '4px 0 0' }}>📍 {listing.location_general}</p>}
+          {(() => {
+            // Show the most specific location the broker opted into exposing
+            // (location_exposure) — full address, city/state, or just the
+            // general area. Never falls back to a more specific field than
+            // what the view actually returned (that gating happens server-side).
+            const specific = listing.property_address
+              ? [listing.property_address, listing.property_city, listing.property_state].filter(Boolean).join(', ')
+              : listing.property_city
+                ? [listing.property_city, listing.property_state].filter(Boolean).join(', ')
+                : null
+            const display = specific || listing.location_general
+            return display ? <p style={{ color: '#888', fontSize: 14, margin: '4px 0 0' }}>📍 {display}</p> : null
+          })()}
+          {listing.website && (
+            <p style={{ margin: '4px 0 0', fontSize: 14 }}>
+              🌐 <a href={listing.website} target="_blank" rel="noopener noreferrer" style={{ color: '#1a1a2e', fontWeight: 600 }}>{listing.website}</a>
+            </p>
+          )}
+          {broker && (
+            <p style={{ margin: '8px 0 0', fontSize: 13, color: '#888' }}>
+              Listed by{' '}
+              <Link href={`/marketplace/brokers/${broker.id}`} style={{ color: '#c9a84c', fontWeight: 700, textDecoration: 'none' }}>
+                {broker.public_name}
+              </Link>
+            </p>
+          )}
         </div>
       </div>
 

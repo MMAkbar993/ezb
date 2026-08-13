@@ -33,7 +33,11 @@ export default function BrokersPage() {
             </div>
           ) : (
             brokers.map((b) => (
-              <div key={b.id} style={{ background: '#fff', border: '1px solid #ece8dc', borderRadius: 12, padding: 28, textAlign: 'center', boxShadow: '0 2px 12px rgba(26,26,46,0.06)' }}>
+              <Link
+                key={b.id}
+                href={`/marketplace/brokers/${b.id}`}
+                style={{ background: '#fff', border: '1px solid #ece8dc', borderRadius: 12, padding: 28, textAlign: 'center', boxShadow: '0 2px 12px rgba(26,26,46,0.06)', textDecoration: 'none', display: 'block' }}
+              >
                 <div style={{ width: 88, height: 88, borderRadius: '50%', background: '#1a1a2e', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'center', overflow: 'hidden', border: '3px solid #c9a84c' }}>
                   {b.avatar_url ? (
                     <img src={b.avatar_url} alt={b.public_name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -45,19 +49,12 @@ export default function BrokersPage() {
                 <div style={{ fontSize: 13, color: '#c9a84c', fontWeight: 600, marginTop: 4 }}>{b.title || 'Business Broker'}</div>
                 {b.agency?.name && <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>{b.agency.name}</div>}
                 {b.bio && <p style={{ fontSize: 13.5, color: '#666', lineHeight: 1.6, marginTop: 12 }}>{b.bio}</p>}
-                <div style={{ marginTop: 16, display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {b.email_public && <BrokerLink href={`mailto:${b.email_public}`}>✉️ {b.email_public}</BrokerLink>}
-                  {b.phone && <BrokerLink href={`tel:${b.phone}`}>📞 {b.phone}</BrokerLink>}
-                </div>
-              </div>
+                <div style={{ marginTop: 16, color: '#1a1a2e', fontSize: 13, fontWeight: 700 }}>View Profile & Listings →</div>
+              </Link>
             ))
           )}
         </div>
       )}
     </div>
   )
-}
-
-function BrokerLink({ href, children }: { href: string; children: React.ReactNode }) {
-  return <Link href={href} style={{ color: '#1a1a2e', textDecoration: 'none', fontSize: 13, fontWeight: 600 }}>{children}</Link>
 }

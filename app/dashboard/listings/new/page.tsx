@@ -47,6 +47,10 @@ function NewListingForm() {
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!form.business_name.trim()) { toast('Business name is required', 'error'); return }
+    if (!form.asking_price.trim() && !form.sde.trim() && !form.ebitda.trim()) {
+      toast('Enter at least one of Asking Price, SDE, or EBITDA', 'error')
+      return
+    }
     setBusy(true)
     try {
       const listing = await createListing({
@@ -148,6 +152,7 @@ function NewListingForm() {
           {input('headline', 'Short marketing headline', 'Headline')}
           {input('industry', 'e.g. Landscaping', 'Industry')}
           {input('location_general', 'e.g. Charlotte, NC', 'Location')}
+          <div style={{ gridColumn: '1 / -1', fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>Enter at least one of Asking Price, SDE, or EBITDA.</div>
           <label style={{ marginBottom: 14, position: 'relative' }}>
             <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--muted)', marginBottom: 5 }}>Asking price ($)</span>
             <input type="number" value={form.asking_price} onChange={(e) => set('asking_price', e.target.value)} placeholder="0" style={fieldStyle} />

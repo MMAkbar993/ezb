@@ -16,6 +16,12 @@ import { supabase } from '@/lib/supabase/client'
 
 export type ReviewStage = 'draft' | 'internal_review' | 'approved'
 
+/** general = location_general only ("Charlotte, NC"), the default and most
+ * confidential; city_state = exact property city/state, no street address;
+ * full_address = the complete street address. Matches BizBuySell's
+ * "Location Confidentiality & Search Exposure" pattern. */
+export type LocationExposure = 'general' | 'city_state' | 'full_address'
+
 export interface PublicListingSettings {
   reviewStage: ReviewStage
   published: boolean
@@ -25,7 +31,11 @@ export interface PublicListingSettings {
   isConfidential: boolean
   publicTitle: string | null
   showFinancials: boolean
-  showExactLocation: boolean
+  locationExposure: LocationExposure
+  requireBuyerPhone: boolean
+  requireBuyerZip: boolean
+  askFundsAvailable: boolean
+  askBuyerTimeframe: boolean
 }
 
 const DEFAULT_SETTINGS: PublicListingSettings = {
@@ -37,7 +47,11 @@ const DEFAULT_SETTINGS: PublicListingSettings = {
   isConfidential: false,
   publicTitle: null,
   showFinancials: false,
-  showExactLocation: false,
+  locationExposure: 'general',
+  requireBuyerPhone: false,
+  requireBuyerZip: false,
+  askFundsAvailable: false,
+  askBuyerTimeframe: false,
 }
 
 export async function fetchPublicListingSettings(listingId: string): Promise<PublicListingSettings> {
@@ -55,7 +69,11 @@ export async function fetchPublicListingSettings(listingId: string): Promise<Pub
     isConfidential: !!pub?.is_confidential,
     publicTitle: pub?.public_title || null,
     showFinancials: !!pub?.show_financials,
-    showExactLocation: !!pub?.show_exact_location,
+    locationExposure: (pub?.location_exposure as LocationExposure) || 'general',
+    requireBuyerPhone: !!pub?.require_buyer_phone,
+    requireBuyerZip: !!pub?.require_buyer_zip,
+    askFundsAvailable: !!pub?.ask_funds_available,
+    askBuyerTimeframe: !!pub?.ask_buyer_timeframe,
   }
 }
 
@@ -75,8 +93,12 @@ export interface PublishOptions {
   isConfidential?: boolean
   publicTitle?: string | null
   showFinancials?: boolean
-  showExactLocation?: boolean
+  locationExposure?: LocationExposure
   isFeatured?: boolean
+  requireBuyerPhone?: boolean
+  requireBuyerZip?: boolean
+  askFundsAvailable?: boolean
+  askBuyerTimeframe?: boolean
 }
 
 function slugify(input: string): string {
@@ -112,8 +134,12 @@ export async function publishToWebsite(
     is_confidential: !!opts.isConfidential,
     public_title: opts.publicTitle ?? null,
     show_financials: !!opts.showFinancials,
-    show_exact_location: !!opts.showExactLocation,
+    location_exposure: opts.locationExposure || 'general',
     is_featured: !!opts.isFeatured,
+    require_buyer_phone: !!opts.requireBuyerPhone,
+    require_buyer_zip: !!opts.requireBuyerZip,
+    ask_funds_available: !!opts.askFundsAvailable,
+    ask_buyer_timeframe: !!opts.askBuyerTimeframe,
   }
 
   const { error } = await supabase.from('public_listings').upsert(patch, { onConflict: 'listing_id' })
