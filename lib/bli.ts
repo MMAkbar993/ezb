@@ -40,7 +40,13 @@ function multi(n: number | null): string {
 export function generateBliContent(listing: Listing): BliContent {
   const metrics = computeFinancialMetrics(listing)
   const now = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
-  const name = listing.business_name || 'This business'
+  // BLI-only anonymization: show the confidential headline instead of the
+  // real trade name when the broker has flagged this listing that way (e.g.
+  // "Non-skilled home care for sale" rather than the actual business name).
+  // Never affects CIM/BOV — those only go to NDA'd, qualified buyers.
+  const name = listing.bli_anonymize
+    ? (listing.headline || `${listing.industry || 'Business'} for sale`)
+    : (listing.business_name || 'This business')
 
   const sections: BliSection[] = [
     { id: 'snapshot', title: 'Offer Snapshot', subsections: [

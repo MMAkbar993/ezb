@@ -112,6 +112,7 @@ async function extractFromDocuments(
     listingName: listing.business_name || 'Business',
     analyses,
     askingPrice: listing.asking_price || 0,
+    industry: listing.industry || null,
   })
   return { ext, notes: `Extracted and combined ${analyses.length} source document(s) (P&L, balance sheet, tax return, bank statements) into the recast.` }
 }

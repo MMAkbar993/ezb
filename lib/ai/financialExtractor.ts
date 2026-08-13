@@ -13,6 +13,7 @@ import type {
   DocumentAnalysis,
   FinancialIntelligence,
 } from '@/lib/ai/types'
+import { getIndustryMultiple } from '@/lib/industryMultiples'
 
 export interface AiExtractionOutput {
   listingId: string
@@ -100,11 +101,13 @@ export function mergeAnalyses({
   listingName,
   analyses,
   askingPrice = 0,
+  industry = null,
 }: {
   listingId: string
   listingName: string
   analyses: DocumentAnalysis[]
   askingPrice?: number
+  industry?: string | null
 }): AiExtractionOutput {
   const revenueByYear = richestRevenue(analyses)
   const revenueTotal = revenueByYear.length
@@ -123,9 +126,10 @@ export function mergeAnalyses({
   const sdeMargin = revenueTotal ? sde / revenueTotal : null
   const ebitdaMargin = revenueTotal ? ebitda / revenueTotal : null
 
-  // Valuation anchors (broker-standard 2.5x–4.0x of SDE, or EBITDA for larger).
-  const sdeMultipleLow = 2.5
-  const sdeMultipleHigh = 4.0
+  // Valuation anchors — industry-specific SDE/EBITDA multiple range (e.g.
+  // Home Care trades higher than a flat main-street average), falling back
+  // to the broker-standard 2.5x–4.0x default when the industry is unknown.
+  const { low: sdeMultipleLow, high: sdeMultipleHigh } = getIndustryMultiple(industry)
   const base = sde || ebitda || Math.round(revenueTotal * 0.2)
   const valueRangeLow = Math.round(base * sdeMultipleLow)
   const valueRangeHigh = Math.round(base * sdeMultipleHigh)

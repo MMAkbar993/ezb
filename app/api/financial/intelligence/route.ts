@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
 
   // 1) Load listing
   const { data: listing, error: lErr } = await supabase
-    .from('listings').select('id, business_name, asking_price, annual_revenue, sde, ebitda').eq('id', listingId).maybeSingle()
+    .from('listings').select('id, business_name, industry, asking_price, annual_revenue, sde, ebitda').eq('id', listingId).maybeSingle()
   if (lErr || !listing) {
     return NextResponse.json({ ok: false, error: 'Listing not found.' }, { status: 404 })
   }
@@ -103,6 +103,7 @@ export async function POST(req: NextRequest) {
     listingName: name,
     analyses,
     askingPrice: listing.asking_price || 0,
+    industry: listing.industry || null,
   })
 
   // 5) Generate comprehensive financial summary

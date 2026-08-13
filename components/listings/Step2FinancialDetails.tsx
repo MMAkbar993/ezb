@@ -4,6 +4,8 @@ import { useEffect, useState } from 'react'
 import { StepShell, stepField, stepLabel, stepBtn } from '@/components/listings/StepShell'
 import { saveFinancials, fetchFinancials, completeStep } from '@/lib/workflow'
 import { updateListing, fetchListing } from '@/lib/listings'
+import MultiFileDropzone from '@/components/financial/MultiFileDropzone'
+import { fetchFinancialFiles } from '@/lib/financialFiles'
 
 // ---------------------------------------------------------------------------
 // Step 2 — Financial Details (revenue, SDE, EBITDA, balance sheet inputs)
@@ -17,9 +19,18 @@ const empty = {
 export default function Step2FinancialDetails({ listingId, onNext }: { listingId: string; onNext: () => void }) {
   const [f, setF] = useState(empty)
   const [busy, setBusy] = useState(false)
+  const [uploadedCount, setUploadedCount] = useState(0)
+
+  const refreshUploadedCount = async () => {
+    try {
+      const all = await fetchFinancialFiles()
+      setUploadedCount(all.filter((d) => d.listing_id === listingId && d.category !== 'generated_document').length)
+    } catch { /* non-fatal */ }
+  }
 
   useEffect(() => {
-    (async () => {
+    refreshUploadedCount()
+    ;(async () => {
       const [fin, listing] = await Promise.all([fetchFinancials(listingId), fetchListing(listingId)])
       if (fin) {
         const s = (v: any) => (v === null || v === undefined || v === '' ? '' : String(v))
@@ -39,7 +50,8 @@ export default function Step2FinancialDetails({ listingId, onNext }: { listingId
   }, [listingId])
 
   const num = (s: string) => (s ? Number(s) : undefined)
-  const hasSde = num(f.sde) !== undefined && num(f.annualRevenue) !== undefined
+  const hasManualFigures = num(f.sde) !== undefined && num(f.annualRevenue) !== undefined
+  const canProceed = hasManualFigures || uploadedCount > 0
 
   const save = async () => {
     setBusy(true)
@@ -72,8 +84,18 @@ export default function Step2FinancialDetails({ listingId, onNext }: { listingId
   )
 
   return (
-    <StepShell step={2} title="Financial Details" description="Enter the business's revenue, cash flow, and balance sheet figures. These drive the BOV and recast."
-      status="draft" onNext={save} nextDisabled={!hasSde} nextLabel={busy ? 'Saving…' : 'Step 2 complete →'}>
+    <StepShell step={2} title="Financial Details" description="Enter the business's revenue, cash flow, and balance sheet figures, or upload real financial documents below — either drives the BOV and recast."
+      status="draft" onNext={save} nextDisabled={!canProceed} nextLabel={busy ? 'Saving…' : 'Step 2 complete →'}>
+      <div style={{ marginBottom: 22, padding: 16, background: 'var(--paper)', borderRadius: 10, border: '1px solid var(--line)' }}>
+        <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy)', marginBottom: 4 }}>
+          Upload financial documents (optional) {uploadedCount > 0 && <span style={{ fontWeight: 400, color: 'var(--muted)' }}>({uploadedCount} uploaded)</span>}
+        </div>
+        <div style={{ fontSize: 12.5, color: 'var(--muted)', marginBottom: 12 }}>
+          Tax returns, P&amp;L, bank/billing statements — recommended over typing figures by hand. These are read automatically when you generate Recast, BOV, CIM &amp; BLI in the next steps.
+        </div>
+        <MultiFileDropzone parentId={listingId} dealId={null} listingId={listingId} onUploaded={refreshUploadedCount} />
+      </div>
+      <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy)', marginBottom: 12 }}>Or enter figures manually</div>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }} className="wf-grid-3">
         {field('annualRevenue', 'Annual Revenue', '$')}
         {field('sde', "SDE (Seller's Discretionary Earnings)", '$')}

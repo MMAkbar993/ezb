@@ -287,6 +287,26 @@ export async function getSignedFileUrl(storagePath: string | null | undefined, e
 }
 
 // ---------------------------------------------------------------------------
+// Trigger the real Recast -> BOV -> CIM -> BLI pipeline (lib/autoGenerate.ts
+// via /api/financial/generate). Shared by every place that needs to run
+// generation for a listing — the standalone Financial tab (OneClickUpload)
+// and the guided listing workflow's Recast/BOV/CIM/BLI steps — so there is
+// exactly one "run generation" code path, not one per surface.
+// ---------------------------------------------------------------------------
+export async function triggerGeneration(listingId: string, dealId: string | null = null): Promise<import('@/lib/autoGenerateTypes').AutoGenerateResult> {
+  const token = await getAccessToken()
+  if (!token) throw new Error('You need to be signed in to generate documents.')
+  const res = await fetch('/api/financial/generate', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify({ listingId, dealId }),
+  })
+  const data = await res.json()
+  if (!data.ok) throw new Error(data.error || 'Generation failed')
+  return data
+}
+
+// ---------------------------------------------------------------------------
 // Multi-file upload with per-file progress + auto-tag + insert
 // ---------------------------------------------------------------------------
 const MAX_SIZE = 25 * 1024 * 1024 // 25 MB

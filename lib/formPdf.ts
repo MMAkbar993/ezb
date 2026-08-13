@@ -26,6 +26,13 @@ export interface FilledFormPdfInput {
   signerTitle?: string | null
   signedAt?: string | null
   ipNote?: string | null
+  /** Optional flowing legal-clause paragraphs (with field values already
+   * interpolated), rendered as a numbered "Agreement Terms" block after the
+   * field sections and before the signature — for documents like the
+   * Exclusive Marketing & Listing Agreement where the actual contract
+   * language matters, not just a label/value list. */
+  clauseTitle?: string
+  clauseText?: string[]
 }
 
 function displayValue(v: unknown): string {
@@ -123,6 +130,26 @@ export function exportFilledFormToPdf(input: FilledFormPdfInput, opts?: { return
       sy += 8
     }
     sy += 8
+  }
+
+  // ---- Agreement clause prose (optional) ----
+  if (input.clauseText?.length) {
+    ensureSpace(30)
+    doc.setFont('times', 'bold')
+    doc.setFontSize(12.5)
+    doc.setTextColor(...NAVY)
+    doc.text(input.clauseTitle || 'Agreement Terms', M, sy)
+    doc.setFillColor(...GOLD)
+    doc.rect(M, sy + 6, 40, 1.5, 'F')
+    sy += 24
+    doc.setFont('times', 'normal')
+    doc.setFontSize(10)
+    doc.setTextColor(...TEXT)
+    for (const clause of input.clauseText) {
+      const wrapped = doc.splitTextToSize(clause, W - M * 2) as string[]
+      for (const l of wrapped) { ensureSpace(15); doc.text(l, M, sy); sy += 14 }
+      sy += 10
+    }
   }
 
   // ---- Signature block ----

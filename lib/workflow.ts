@@ -230,66 +230,6 @@ export async function fetchRecast(listingId: string): Promise<any | null> {
   } catch { return null }
 }
 
-// --- Steps 4-6: BOV / CIM / BLI auto-generation ---
-export async function generateBOV(listingId: string): Promise<any | null> {
-  try {
-    const listing = await fetchListingRaw(listingId)
-    const multiple = 3.0
-    const sde = listing?.sde || 0
-    const valuation = Math.round((sde as number) * multiple)
-    const { data, error } = await supabase.from('bov_versions').insert({
-      listing_id: listingId, version_number: 1, valuation_multiple: multiple, valuation_amount: valuation,
-      content: { valuation_multiple: multiple, valuation_amount: valuation, sde, business_name: listing?.business_name },
-      status: 'draft', generated_at: new Date().toISOString(),
-    }).select().single()
-    if (error) return null
-    return data
-  } catch { return null }
-}
-export async function generateCIM(listingId: string): Promise<any | null> {
-  try {
-    const listing = await fetchListingRaw(listingId)
-    const recast = await fetchRecast(listingId)
-    const { data, error } = await supabase.from('cim_versions').insert({
-      listing_id: listingId, version_number: 1,
-      content: { business_name: listing?.business_name, recasted_sde: recast?.recasted_sde ?? listing?.sde, generated_from: 'recast' },
-      status: 'draft', generated_at: new Date().toISOString(),
-    }).select().single()
-    if (error) return null
-    return data
-  } catch { return null }
-}
-export async function generateBLI(listingId: string): Promise<any | null> {
-  try {
-    const listing = await fetchListingRaw(listingId)
-    const { data, error } = await supabase.from('bli_versions').insert({
-      listing_id: listingId, version_number: 1,
-      content: { business_name: listing?.business_name, asking_price: listing?.asking_price, industry: listing?.industry, location_general: listing?.location_general },
-      status: 'draft', generated_at: new Date().toISOString(),
-    }).select().single()
-    if (error) return null
-    return data
-  } catch { return null }
-}
-async function fetchListingRaw(id: string): Promise<any | null> {
-  try {
-    const { data } = await supabase.from('listings').select('*').eq('id', id).single()
-    return data || null
-  } catch { return null }
-}
-export async function fetchVersions(listingId: string, table: 'bov_versions' | 'cim_versions' | 'bli_versions'): Promise<any[]> {
-  try {
-    const { data } = await supabase.from(table).select('*').eq('listing_id', listingId).order('version_number', { ascending: false })
-    return (data || []) as any[]
-  } catch { return [] }
-}
-export async function finalizeVersion(table: 'bov_versions' | 'cim_versions' | 'bli_versions', id: string, status: string): Promise<boolean> {
-  try {
-    const { error } = await supabase.from(table).update({ status }).eq('id', id)
-    return !error
-  } catch { return false }
-}
-
 // --- Step 7: SBA (optional) ---
 export async function saveSBA(listingId: string, sba: Partial<any>): Promise<boolean> {
   try {

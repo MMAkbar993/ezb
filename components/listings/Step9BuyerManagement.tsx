@@ -5,6 +5,8 @@ import { StepShell, stepField, stepLabel, stepBtn } from '@/components/listings/
 import { fetchBuyers, addBuyer, updateBuyer, completeStep, recordLOI } from '@/lib/workflow'
 import StatusBadge from '@/components/listings/StatusBadge'
 import BuyerInquiriesList from '@/components/listings/BuyerInquiriesList'
+import { fetchBuyerInquiries, type BuyerInquiry } from '@/lib/buyerInquiries'
+import { useToast } from '@/components/ui/Toast'
 
 // ---------------------------------------------------------------------------
 // Step 9 — Buyer Management: NDAs, financial qualification, primary buyer.
@@ -14,12 +16,36 @@ import BuyerInquiriesList from '@/components/listings/BuyerInquiriesList'
 const emptyBuyer = { buyer_name: '', buyer_email: '', buyer_phone: '', buyer_type: 'individual' }
 
 export default function Step9BuyerManagement({ listingId, onNext, onAgreementChange }: { listingId: string; onNext: () => void; onAgreementChange?: () => void }) {
+  const toast = useToast()
   const [buyers, setBuyers] = useState<any[]>([])
+  const [inquiries, setInquiries] = useState<BuyerInquiry[]>([])
   const [form, setForm] = useState(emptyBuyer)
   const [busy, setBusy] = useState(false)
 
-  const load = async () => { setBuyers(await fetchBuyers(listingId)) }
+  const load = async () => {
+    setBuyers(await fetchBuyers(listingId))
+    try { setInquiries(await fetchBuyerInquiries(listingId)) } catch { setInquiries([]) }
+  }
   useEffect(() => { load() }, [listingId])
+
+  // A buyer has really signed the NDA if either the broker manually marked
+  // it, or their email matches a real, timestamped public NDA submission
+  // (listing_nda_signatures) — the actual accountless gate, not just a
+  // checkbox.
+  const hasRealNda = (b: any) =>
+    !!b.buyer_email && inquiries.some((i) => i.buyer_email.toLowerCase() === b.buyer_email.toLowerCase())
+
+  const ndaConfirmed = (b: any) => !!b.nda_signed || hasRealNda(b)
+
+  const copyNdaLink = async (b: any) => {
+    const link = `${window.location.origin}/marketplace/listings/${listingId}`
+    try {
+      await navigator.clipboard.writeText(link)
+      toast(`NDA link copied — send it to ${b.buyer_name}`, 'success')
+    } catch {
+      toast(link, 'success')
+    }
+  }
 
   const addNew = async () => {
     if (!form.buyer_name.trim()) return
@@ -78,14 +104,26 @@ export default function Step9BuyerManagement({ listingId, onNext, onAgreementCha
           </div>
 
           <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap', alignItems: 'center' }}>
-            <button onClick={() => markNDA(b, !b.nda_signed)} style={chipBtn(b.nda_signed ? '#16a34a' : '#7a7a8a')}>
-              {b.nda_signed ? '✓ NDA signed' : 'Mark NDA signed'}
-            </button>
+            {hasRealNda(b) ? (
+              <span style={chipBtn('#16a34a')}>✓ NDA verified (signed on listing page)</span>
+            ) : (
+              <button onClick={() => markNDA(b, !b.nda_signed)} style={chipBtn(b.nda_signed ? '#16a34a' : '#7a7a8a')}>
+                {b.nda_signed ? '✓ NDA signed (manual)' : 'Mark NDA signed'}
+              </button>
+            )}
+            <button onClick={() => copyNdaLink(b)} style={chipBtn('#0f3460')}>🔗 Copy NDA link to send</button>
             <button onClick={() => updateBuyer(b.id, { financial_qualified: !b.financial_qualified }).then(load)} style={chipBtn(b.financial_qualified ? '#16a34a' : '#7a7a8a')}>
               {b.financial_qualified ? '✓ Financially qualified' : 'Mark financially qualified'}
             </button>
             {!b.is_primary_buyer && (
-              <button onClick={() => setLOI(b)} disabled={busy} style={{ marginLeft: 'auto', ...stepBtn(true), padding: '9px 16px', fontSize: 13 }}>📝 Sign LOI → Pending Sale</button>
+              <button
+                onClick={() => ndaConfirmed(b) ? setLOI(b) : toast(`${b.buyer_name} hasn't signed the NDA yet — send the link or mark it signed first.`, 'error')}
+                disabled={busy}
+                title={ndaConfirmed(b) ? undefined : 'NDA not yet signed'}
+                style={{ marginLeft: 'auto', ...stepBtn(true), padding: '9px 16px', fontSize: 13, opacity: ndaConfirmed(b) ? 1 : 0.5 }}
+              >
+                {ndaConfirmed(b) ? '📝 Sign LOI → Pending Sale' : '🔒 Sign LOI (NDA required first)'}
+              </button>
             )}
           </div>
           {b.is_primary_buyer && (

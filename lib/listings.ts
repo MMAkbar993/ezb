@@ -61,6 +61,8 @@ export interface Listing {
   // Real-estate detail (only relevant when real_estate_included = true)
   property_type: string | null
   real_estate_asking_price: number | null
+  // BLI-only confidentiality — never affects CIM/BOV (see lib/bli.ts)
+  bli_anonymize: boolean | null
 }
 
 export type ListingInput = Partial<Omit<Listing, 'id' | 'created_at' | 'updated_at'>>

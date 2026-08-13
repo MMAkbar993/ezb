@@ -179,8 +179,16 @@ export const SELLER_FORM_SCHEMAS: Record<SellerFormType, SellerFormSchema> = {
           { key: 'seller_note', label: 'Seller Note ($)', type: 'number' },
           { key: 'interest_rate', label: 'Interest Rate', type: 'text' },
           { key: 'monthly_payment', label: 'Monthly Payment ($)', type: 'number' },
-          { key: 'term_months', label: 'Term (months)', type: 'number' },
+          { key: 'term_months', label: 'Seller Note Repayment Term (months)', type: 'number' },
           { key: 'additional_provisions', label: 'Additional Provisions', type: 'textarea' },
+        ],
+      },
+      {
+        title: 'Agreement Terms',
+        fields: [
+          { key: 'agreement_term_months', label: 'Agreement Term (months)', type: 'number', placeholder: 'e.g. 12' },
+          { key: 'broker_commission_percent', label: 'Broker Commission (%)', type: 'number', placeholder: 'e.g. 8' },
+          { key: 'commission_minimum_fee', label: 'Minimum Commission Fee ($)', type: 'number', placeholder: 'e.g. 15000' },
         ],
       },
     ],

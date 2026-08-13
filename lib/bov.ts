@@ -1,5 +1,6 @@
 import { supabase } from '@/lib/supabase/client'
 import type { Listing } from '@/lib/listings'
+import { getIndustryMultiple } from '@/lib/industryMultiples'
 
 // ---------------------------------------------------------------------------
 // BOV (Broker Opinion of Value) generator
@@ -154,9 +155,10 @@ export function generateBovContent(listing: Listing): BovContent {
   // Use comparables matched to industry, else defaults
   const comparables = INDUSTRY_GUIDES[listing.industry || ''] || DEFAULT_GUIDES
 
-  // Valuation range: reflect reasonable SDE/EBITDA multiple bands
-  const lowMultiplier = 2.5
-  const highMultiplier = 4.0
+  // Valuation range: reflect reasonable SDE/EBITDA multiple bands for this
+  // listing's industry (e.g. Home Care trades higher than a flat main-street
+  // average) rather than one fixed range for every business.
+  const { low: lowMultiplier, high: highMultiplier } = getIndustryMultiple(listing.industry)
   const base = sde || ebitda || 0
   const low = base * lowMultiplier
   const high = base * highMultiplier

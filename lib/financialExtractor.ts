@@ -23,6 +23,7 @@ import type {
 } from '@/lib/ai/types'
 import { UNIVERSAL_DOC_TYPE_INFO } from '@/lib/ai/types'
 import { autoTagCategory, type FinancialCategory, type FinancialDoc } from '@/lib/financialFiles'
+import { getIndustryMultiple } from '@/lib/industryMultiples'
 
 // ---------------------------------------------------------------------------
 // 1) Universal file-type detection — ALL 15+ supported document types.
@@ -254,8 +255,7 @@ export function computeFinancialMetrics(listing: Listing): FinancialMetrics {
   const sdeMargin = revenue ? sde / revenue : null
   const ebitdaMargin = revenue ? ebitda / revenue : null
 
-  const sdeMultipleLow = 2.5
-  const sdeMultipleHigh = 4.0
+  const { low: sdeMultipleLow, high: sdeMultipleHigh } = getIndustryMultiple(listing.industry)
   const base = sde || ebitda || Math.round(revenue * 0.2)
   const valueRangeLow = Math.round(base * sdeMultipleLow)
   const valueRangeHigh = Math.round(base * sdeMultipleHigh)

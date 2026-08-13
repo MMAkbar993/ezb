@@ -10,7 +10,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import MultiFileDropzone from '@/components/financial/MultiFileDropzone'
-import { fetchDealOptions, createUnlistedBusiness, getAccessToken, type DealOption } from '@/lib/financialFiles'
+import { fetchDealOptions, createUnlistedBusiness, triggerGeneration, type DealOption } from '@/lib/financialFiles'
 import type { AutoGenerateResult } from '@/lib/autoGenerateTypes'
 
 interface Props {
@@ -81,19 +81,9 @@ export default function OneClickUpload({ onGenerated, activeParentId, onSelectio
     setStatus('Running Recast → BOV → CIM → BLI…')
     setError(null)
     try {
-      const token = await getAccessToken()
-      if (!token) throw new Error('You need to be signed in to generate documents.')
-      const res = await fetch('/api/financial/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
-        // Always the real listing id — `selected` is the dropdown's key,
-        // which is a deal id for deal-backed options (see DealOption).
-        body: JSON.stringify({ listingId: selectedOption.listingId, dealId: selectedOption.dealId }),
-      })
-      const data = (await res.json()) as AutoGenerateResult
-      if (!data.ok) {
-        throw new Error(data.error || 'Generation failed')
-      }
+      // Always the real listing id — `selected` is the dropdown's key, which
+      // is a deal id for deal-backed options (see DealOption).
+      const data = await triggerGeneration(selectedOption.listingId, selectedOption.dealId)
       setStatus(`Done — ${data.artifacts.length} document(s) generated`)
       onGenerated(data)
     } catch (e: any) {

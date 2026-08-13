@@ -15,7 +15,10 @@ import { validateServerInput, commonSchemas } from '@cosmstack/blackshield/serve
 //   * Signed-cookie style helpers available; here we rely on secret + schema.
 // =============================================================================
 
-const BBS_WEBHOOK_SECRET = process.env.BBS_WEBHOOK_SECRET || 'dev-secret'
+// Matches the variable name actually defined in .env / .env.example — this
+// previously read BBS_WEBHOOK_SECRET (undefined), silently falling back to
+// 'dev-secret' and never matching a real configured secret.
+const BBS_WEBHOOK_SECRET = process.env.BIZBUYSELL_WEBHOOK_SECRET || 'dev-secret'
 const MAX_PAYLOAD_BYTES = 64 * 1024 // 64 KB cap to avoid abuse
 
 function adminClient() {
