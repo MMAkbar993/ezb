@@ -40,7 +40,7 @@ export default function DealDetail({ deal, onClose, onMoveStage, onEdit, onDelet
         {/* Body */}
         <div style={{ padding: '20px', overflowY: 'auto', flex: 1 }}>
           {/* Key stats */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '20px' }}>
+          <div className="grid-2" style={{ gap: '12px', marginBottom: '20px' }}>
             <StatBox label="Purchase Price" value={formatMoney(deal.purchase_price)} />
             <StatBox label="Asking Price" value={formatMoney(deal.asking_price)} />
             <StatBox label="Stage" value={stageLabel(deal.stage)} />

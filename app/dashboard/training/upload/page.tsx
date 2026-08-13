@@ -115,7 +115,7 @@ export default function TrainingUploadPage() {
                 style={{ width: '100%' }}
               />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+            <div className="grid-2" style={{ gap: 16 }}>
               <div>
                 <label className="label" style={{ display: 'block', marginBottom: 6 }}>Type</label>
                 <select className="select" value={fileType} onChange={(e) => setFileType(e.target.value)} style={{ width: '100%' }}>

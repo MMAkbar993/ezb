@@ -105,30 +105,32 @@ export default function SyncDashboard() {
           {syncs.length === 0 ? (
             <EmptyState icon="🔄" title="No sync activity yet" subtitle="Sync a listing to see status here." />
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid var(--navy)', color: 'var(--navy)', textAlign: 'left' }}>
-                  <th style={{ padding: '10px 12px' }}>Listing</th>
-                  <th style={{ padding: '10px 12px' }}>Status</th>
-                  <th style={{ padding: '10px 12px' }}>External ID</th>
-                  <th style={{ padding: '10px 12px' }}>Last Sync</th>
-                  <th style={{ padding: '10px 12px' }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {syncs.map((s) => (
-                  <tr key={s.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                    <td style={{ padding: '10px 12px', fontWeight: 600 }}>{s.business_name || '—'}</td>
-                    <td style={{ padding: '10px 12px' }}><Badge color={statusColor(s.status)}>{s.status}</Badge></td>
-                    <td style={{ padding: '10px 12px', color: 'var(--muted)' }}>{s.external_id || '—'}</td>
-                    <td style={{ padding: '10px 12px', color: 'var(--muted)' }}>{s.last_sync_at ? new Date(s.last_sync_at).toLocaleString() : '—'}</td>
-                    <td style={{ padding: '10px 12px' }}>
-                      {s.status === 'synced' && <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => unsyncListing(s.id).then(() => { toast('Removed from BizBuySell', 'info'); load() }).catch((e: any) => toast(e.message, 'error'))}>Unsync</button>}
-                    </td>
+            <div className="table-scroll">
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--navy)', color: 'var(--navy)', textAlign: 'left' }}>
+                    <th style={{ padding: '10px 12px' }}>Listing</th>
+                    <th style={{ padding: '10px 12px' }}>Status</th>
+                    <th style={{ padding: '10px 12px' }}>External ID</th>
+                    <th style={{ padding: '10px 12px' }}>Last Sync</th>
+                    <th style={{ padding: '10px 12px' }}></th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {syncs.map((s) => (
+                    <tr key={s.id} style={{ borderBottom: '1px solid var(--line)' }}>
+                      <td style={{ padding: '10px 12px', fontWeight: 600 }}>{s.business_name || '—'}</td>
+                      <td style={{ padding: '10px 12px' }}><Badge color={statusColor(s.status)}>{s.status}</Badge></td>
+                      <td style={{ padding: '10px 12px', color: 'var(--muted)' }}>{s.external_id || '—'}</td>
+                      <td style={{ padding: '10px 12px', color: 'var(--muted)' }}>{s.last_sync_at ? new Date(s.last_sync_at).toLocaleString() : '—'}</td>
+                      <td style={{ padding: '10px 12px' }}>
+                        {s.status === 'synced' && <button className="btn btn-ghost" style={{ padding: '4px 10px', fontSize: 12 }} onClick={() => unsyncListing(s.id).then(() => { toast('Removed from BizBuySell', 'info'); load() }).catch((e: any) => toast(e.message, 'error'))}>Unsync</button>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </Card>

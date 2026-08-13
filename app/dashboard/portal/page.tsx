@@ -85,7 +85,7 @@ function PortalManager() {
       <Card>
         <CardHeader title="Grant client access" subtitle="Send a private portal link for a deal" />
         <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 12 }} className="portal-grid">
+          <div className="portal-grid" style={{ gap: 12 }}>
             <select value={selected} onChange={(e) => switchDeal(e.target.value)} style={inputStyle}>
               <option value="">Select a deal…</option>
               {deals.map((d) => <option key={d.id} value={d.id}>{d.title || 'Untitled deal'} ({d.status})</option>)}

@@ -78,7 +78,7 @@ export default function Step9BuyerManagement({ listingId, onNext, onAgreementCha
       {/* Add buyer */}
       <div style={{ background: 'var(--paper)', padding: 16, borderRadius: 10, border: '1px solid var(--line)', marginBottom: 18 }}>
         <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy)', marginBottom: 10 }}>Add a buyer</div>
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.6fr 1.2fr 1fr', gap: 10 }} className="wf-grid-4">
+        <div className="grid-responsive collapse-sm" style={{ '--grid-cols': '2fr 1.6fr 1.2fr 1fr', '--grid-gap': '10px' } as React.CSSProperties}>
           <input value={form.buyer_name} onChange={(e) => setForm({ ...form, buyer_name: e.target.value })} placeholder="Buyer name" style={stepField} />
           <input value={form.buyer_email} onChange={(e) => setForm({ ...form, buyer_email: e.target.value })} placeholder="Email" style={stepField} />
           <input value={form.buyer_phone} onChange={(e) => setForm({ ...form, buyer_phone: e.target.value })} placeholder="Phone" style={stepField} />

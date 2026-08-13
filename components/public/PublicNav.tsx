@@ -14,8 +14,10 @@ export default function PublicNav() {
           <span style={{ fontSize: 10, letterSpacing: '0.25em', color: '#c9a84c', textTransform: 'uppercase' }}>Markets</span>
         </Link>
 
-        {/* Desktop nav */}
-        <nav style={{ display: 'flex', gap: 28, alignItems: 'center' }}>
+        {/* Desktop nav — hidden under 860px via .publicnav-links (an inline
+            display:none can't be overridden by a media query, so visibility
+            for both this and the toggle button below is CSS-class driven). */}
+        <nav className="publicnav-links" style={{ gap: 28, alignItems: 'center' }}>
           <NavLink href="/marketplace/listings">Buy a Business</NavLink>
           <NavLink href="/marketplace/sell">Sell a Business</NavLink>
           <NavLink href="/marketplace/brokers">Our Brokers</NavLink>
@@ -29,24 +31,38 @@ export default function PublicNav() {
           </Link>
         </nav>
 
-        <button onClick={() => setOpen(!open)} style={{ display: 'none', background: 'none', border: 'none', fontSize: 24, cursor: 'pointer' }}>☰</button>
+        <button
+          onClick={() => setOpen(!open)}
+          className="publicnav-toggle"
+          aria-label={open ? 'Close menu' : 'Open menu'}
+          style={{ background: 'none', border: 'none', fontSize: 24, cursor: 'pointer', color: '#1a1a2e' }}
+        >
+          {open ? '✕' : '☰'}
+        </button>
       </div>
       {open && (
         <nav style={{ padding: '12px 24px', display: 'flex', flexDirection: 'column', gap: 12, borderTop: '1px solid #ece8dc', background: '#fff' }}>
-          <NavLink href="/marketplace/listings">Buy a Business</NavLink>
-          <NavLink href="/marketplace/sell">Sell a Business</NavLink>
-          <NavLink href="/marketplace/brokers">Our Brokers</NavLink>
-          <NavLink href="/about">About</NavLink>
-          <NavLink href="/contact">Contact</NavLink>
+          <NavLink href="/marketplace/listings" onClick={() => setOpen(false)}>Buy a Business</NavLink>
+          <NavLink href="/marketplace/sell" onClick={() => setOpen(false)}>Sell a Business</NavLink>
+          <NavLink href="/marketplace/brokers" onClick={() => setOpen(false)}>Our Brokers</NavLink>
+          <NavLink href="/about" onClick={() => setOpen(false)}>About</NavLink>
+          <NavLink href="/contact" onClick={() => setOpen(false)}>Contact</NavLink>
+          <Link
+            href="/auth"
+            onClick={() => setOpen(false)}
+            style={{ background: '#1a1a2e', color: '#fff', padding: '10px 16px', borderRadius: 6, textDecoration: 'none', fontWeight: 700, fontSize: 14, fontFamily: 'Georgia, serif', textAlign: 'center' }}
+          >
+            Broker Login
+          </Link>
         </nav>
       )}
     </header>
   )
 }
 
-function NavLink({ href, children, arrow }: { href: string; children: React.ReactNode; arrow?: boolean }) {
+function NavLink({ href, children, arrow, onClick }: { href: string; children: React.ReactNode; arrow?: boolean; onClick?: () => void }) {
   return (
-    <Link href={href} style={{ color: '#1a1a2e', textDecoration: 'none', fontSize: 14.5, fontWeight: 600, fontFamily: 'Georgia, serif', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+    <Link href={href} onClick={onClick} style={{ color: '#1a1a2e', textDecoration: 'none', fontSize: 14.5, fontWeight: 600, fontFamily: 'Georgia, serif', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
       {children} {arrow && <span style={{ color: '#c9a84c' }}>→</span>}
     </Link>
   )

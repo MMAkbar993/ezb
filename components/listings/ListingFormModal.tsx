@@ -218,7 +218,7 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+          <div className="grid-2" style={{ gap: 12, marginBottom: 14 }}>
             <div>
               <label className="label">Business Name *</label>
               <input className="input" value={form.business_name} onChange={(e) => set('business_name', e.target.value)} />
@@ -229,7 +229,7 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+          <div className="grid-2" style={{ gap: 12, marginBottom: 14 }}>
             <div>
               <label className="label">Business Type (broad category)</label>
               <input className="input" value={form.business_type} onChange={(e) => set('business_type', e.target.value)} placeholder="e.g. Retail, Restaurants & Food" />
@@ -245,7 +245,7 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
             <input className="input" value={form.headline} onChange={(e) => set('headline', e.target.value)} placeholder="Short confidential headline" />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
+          <div className="grid-2" style={{ gap: 12, marginBottom: 14 }}>
             <div>
               <label className="label">Location</label>
               <input className="input" value={form.location_general} onChange={(e) => set('location_general', e.target.value)} placeholder="e.g. Charlotte, NC" />
@@ -264,7 +264,7 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
           </div>
 
           <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 6 }}>Enter at least one of Asking Price, SDE, or EBITDA.</div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 12, marginBottom: 14 }}>
+          <div className="grid-4" style={{ gap: 12, marginBottom: 14 }}>
             <div>
               <label className="label">Asking Price</label>
               <input className="input" type="number" value={form.asking_price} onChange={(e) => set('asking_price', e.target.value)} />
@@ -315,7 +315,7 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
                 </label>
               ))}
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 4 }}>
+            <div className="grid-3" style={{ gap: 12, marginBottom: 4 }}>
               <div>
                 <label className="label">Full-Time Employees</label>
                 <input className="input" type="number" min="0" value={form.num_employees_ft} onChange={(e) => set('num_employees_ft', e.target.value)} placeholder="e.g. 10" />
@@ -337,7 +337,7 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
                 <input className="input" type="number" min="0" value={form.num_employees} onChange={(e) => set('num_employees', e.target.value)} placeholder="Or fill in the breakdown above" />
               </div>
             )}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div className="grid-3" style={{ gap: 12, marginBottom: 12 }}>
               <div>
                 <label className="label">Owners Working in Business</label>
                 <input className="input" type="number" min="0" value={form.num_owners} onChange={(e) => set('num_owners', e.target.value)} />
@@ -347,7 +347,7 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
                 <input className="input" type="number" min="0" value={form.business_square_footage} onChange={(e) => set('business_square_footage', e.target.value)} placeholder="Leased or owned" />
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+            <div className="grid-2" style={{ gap: 12, marginBottom: 12 }}>
               <div>
                 <label className="label">Year Established</label>
                 <input className="input" type="number" value={form.year_established} onChange={(e) => set('year_established', e.target.value)} placeholder="e.g. 1998" />
@@ -393,7 +393,7 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
           {!form.real_estate_included && (
             <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 16, marginBottom: 20, background: 'var(--cream)' }}>
               <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 1.2, color: 'var(--gold-dark)', fontWeight: 700, marginBottom: 12 }}>Lease Terms</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="grid-2" style={{ gap: 12 }}>
                 <div>
                   <label className="label">Years Remaining on Lease</label>
                   <input className="input" type="number" step="0.5" min="0" value={form.lease_years_remaining} onChange={(e) => set('lease_years_remaining', e.target.value)} />
@@ -409,7 +409,7 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
           {form.real_estate_included && (
             <div style={{ border: '1px solid var(--line)', borderRadius: 10, padding: 16, marginBottom: 20, background: 'var(--cream)' }}>
               <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 1.2, color: 'var(--gold-dark)', fontWeight: 700, marginBottom: 12 }}>Property Details</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div className="grid-2" style={{ gap: 12, marginBottom: 12 }}>
                 <div>
                   <label className="label">Property Type</label>
                   <select className="select" value={form.property_type} onChange={(e) => set('property_type', e.target.value)}>
@@ -421,7 +421,7 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
                   <input className="input" type="number" value={form.real_estate_asking_price} onChange={(e) => set('real_estate_asking_price', e.target.value)} placeholder="If priced separately" />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div className="grid-3" style={{ gap: 12, marginBottom: 12 }}>
                 <div>
                   <label className="label">Property Value</label>
                   <input className="input" type="number" value={form.property_value} onChange={(e) => set('property_value', e.target.value)} />
@@ -435,7 +435,7 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
                   <input className="input" type="number" step="0.01" value={form.land_acres} onChange={(e) => set('land_acres', e.target.value)} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div className="grid-3" style={{ gap: 12, marginBottom: 12 }}>
                 <div>
                   <label className="label">Year Built</label>
                   <input className="input" type="number" value={form.year_built} onChange={(e) => set('year_built', e.target.value)} />
@@ -449,7 +449,7 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
                   <input className="input" value={form.property_city} onChange={(e) => set('property_city', e.target.value)} />
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, marginBottom: 12 }}>
+              <div className="grid-3" style={{ gap: 12, marginBottom: 12 }}>
                 <div>
                   <label className="label">State</label>
                   <input className="input" value={form.property_state} onChange={(e) => set('property_state', e.target.value)} maxLength={2} placeholder="NC" />

@@ -96,7 +96,7 @@ export default function Step2FinancialDetails({ listingId, onNext }: { listingId
         <MultiFileDropzone parentId={listingId} dealId={null} listingId={listingId} onUploaded={refreshUploadedCount} />
       </div>
       <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy)', marginBottom: 12 }}>Or enter figures manually</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }} className="wf-grid-3">
+      <div className="wf-grid-3" style={{ gap: 14 }}>
         {field('annualRevenue', 'Annual Revenue', '$')}
         {field('sde', "SDE (Seller's Discretionary Earnings)", '$')}
         {field('ebitda', 'EBITDA', '$')}
@@ -105,7 +105,7 @@ export default function Step2FinancialDetails({ listingId, onNext }: { listingId
         {field('ffeValue', 'FF&E Value', '$')}
       </div>
       <div style={{ margin: '8px 0 18px', fontSize: 12.5, color: 'var(--muted)' }}>Balance sheet (optional):</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }} className="wf-grid-3">
+      <div className="wf-grid-3" style={{ gap: 14 }}>
         {field('realEstateValue', 'Real Estate Value', '$')}
         {field('totalAssets', 'Total Assets', '$')}
         {field('totalLiabilities', 'Total Liabilities', '$')}

@@ -94,7 +94,7 @@ export default function AgencyAdmin() {
       {agencies.length === 0 ? (
         <EmptyState icon="🏛️" title="No agencies yet" subtitle="Create an agency to manage multiple brokers with white-label branding." />
       ) : (
-        <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 20, alignItems: 'start' }}>
+        <div className="grid-responsive collapse-md" style={{ '--grid-cols': '300px 1fr', '--grid-gap': '20px', alignItems: 'start' } as React.CSSProperties}>
           {/* Agency list */}
           <Card style={{ overflow: 'hidden' }}>
             <div style={{ padding: '14px 18px', borderBottom: '1px solid var(--line)', fontWeight: 700, color: 'var(--navy)' }}>Agencies</div>
@@ -186,7 +186,7 @@ function AgencyBrandingForm({ agency, onSave, onDelete }: { agency: Agency; onSa
 
   return (
     <div style={{ padding: '16px 20px 20px' }}>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+      <div className="grid-2" style={{ gap: 12 }}>
         <div>
           <label className="label">Agency Name</label>
           <input className="input" value={name} onChange={(e) => setName(e.target.value)} />
@@ -203,7 +203,7 @@ function AgencyBrandingForm({ agency, onSave, onDelete }: { agency: Agency; onSa
         <label className="label">Custom Domain (optional)</label>
         <input className="input" value={domain} onChange={(e) => setDomain(e.target.value)} placeholder="brokerage.com" />
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+      <div className="grid-2" style={{ gap: 12, marginTop: 12 }}>
         <div>
           <label className="label">Brand Color</label>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>

@@ -207,7 +207,7 @@ export default function RecastStudio() {
 
       {/* Entity + listing */}
       <div className="card" style={{ padding: 18, marginBottom: 16 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 14 }}>
+        <div className="grid-3" style={{ gap: 14 }}>
           <div>
             <label className="label">Business / Listing</label>
             <select className="select" value={listingId} onChange={(e) => handleListingChange(e.target.value)}>
@@ -231,7 +231,7 @@ export default function RecastStudio() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.2fr', gap: 20, alignItems: 'start' }}>
+      <div className="grid-responsive collapse-md" style={{ '--grid-cols': '1fr 1.2fr', '--grid-gap': '20px', alignItems: 'start' } as React.CSSProperties}>
         {/* LEFT: uploads */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
           <Card>
@@ -264,7 +264,7 @@ export default function RecastStudio() {
           <Card>
             <CardHeader title="Step 2 · Add-Backs / Adjustments" subtitle="Account for owner compensation, D&A, one-time & discretionary items" />
             <div style={{ padding: '16px 20px 20px' }}>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="grid-2" style={{ gap: 10 }}>
                 <div>
                   <label className="label">Category</label>
                   <select className="select" value={addBackDraft.category} onChange={(e) => setAddBackDraft({ ...addBackDraft, category: e.target.value as AddBackCategory })}>
@@ -278,7 +278,7 @@ export default function RecastStudio() {
                   </select>
                 </div>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 10, marginTop: 10 }}>
+              <div className="grid-responsive collapse-md" style={{ '--grid-cols': '2fr 1fr 1fr', '--grid-gap': '10px', marginTop: 10 } as React.CSSProperties}>
                 <div>
                   <label className="label">Description</label>
                   <input className="input" value={addBackDraft.description} onChange={(e) => setAddBackDraft({ ...addBackDraft, description: e.target.value })} placeholder="e.g. Owner's personal credit card" />
@@ -333,7 +333,7 @@ export default function RecastStudio() {
                   </div>
                   {years.length > 1 && <button className="btn btn-danger" onClick={() => removeYear(idx)} style={{ padding: '4px 8px' }}>✕</button>}
                 </div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8 }}>
+                <div className="grid-4" style={{ gap: 8 }}>
                   <input className="input" placeholder="Revenue" value={y.grossRevenue} onChange={(e) => setYear(idx, 'grossRevenue', e.target.value)} />
                   <input className="input" placeholder="COGS" value={y.cogs} onChange={(e) => setYear(idx, 'cogs', e.target.value)} />
                   <input className="input" placeholder="Op. Expenses" value={y.operatingExpenses} onChange={(e) => setYear(idx, 'operatingExpenses', e.target.value)} />

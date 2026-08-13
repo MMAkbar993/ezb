@@ -74,17 +74,17 @@ export default async function HomePage() {
           <form
             action="/marketplace/listings"
             method="GET"
+            className="grid-responsive collapse-md"
             style={{
               background: '#fff',
               borderRadius: 12,
               padding: 14,
-              display: 'grid',
-              gridTemplateColumns: '2fr 1.3fr 1fr auto',
-              gap: 10,
+              '--grid-cols': '2fr 1.3fr 1fr auto',
+              '--grid-gap': '10px',
               maxWidth: 820,
               margin: '0 auto',
               boxShadow: '0 20px 60px rgba(0,0,0,0.35)',
-            }}
+            } as React.CSSProperties}
           >
             <input name="q" placeholder="Keyword (e.g. restaurant, HVAC, e-commerce)" style={searchInput} />
             <select name="industry" defaultValue="" style={searchInput}>

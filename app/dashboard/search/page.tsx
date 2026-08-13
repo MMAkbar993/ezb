@@ -172,7 +172,7 @@ function SearchInner() {
         </div>
       </Card>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 280px', gap: 20, alignItems: 'start' }}>
+      <div className="grid-responsive collapse-md" style={{ '--grid-cols': '1fr 280px', '--grid-gap': '20px', alignItems: 'start' } as React.CSSProperties}>
         {/* Results */}
         <Card>
           <CardHeader

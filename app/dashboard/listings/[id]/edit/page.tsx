@@ -79,7 +79,7 @@ function EditForm() {
       <p style={{ color: 'var(--muted)', marginBottom: 20 }}>Update the marketing and deal details. Financial recasting lives in the workflow.</p>
 
       <div style={{ padding: '24px 28px', background: '#fff', border: '1px solid var(--line)', borderRadius: 14 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }} className="wf-grid-2">
+        <div className="wf-grid-2" style={{ gap: '0 16px' }}>
           <div style={{ gridColumn: '1 / -1' }}>{inp('business_name', 'Business name *', 'Business name')}</div>
           {inp('headline', 'Headline', 'Short marketing line')}
           {inp('industry', 'Industry', 'e.g. Landscaping')}

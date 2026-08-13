@@ -46,7 +46,7 @@ export default function MatchedBuyersModal({ matches, listingIndustry, onDone }:
                     </span>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px 16px', fontSize: 13, color: 'var(--text)' }}>
+                  <div className="grid-2" style={{ gap: '6px 16px', fontSize: 13, color: 'var(--text)' }}>
                     <div><strong>Wants:</strong> {m.desired_business_type || '—'}</div>
                     <div><strong>Budget:</strong> {m.budget_range || '—'}</div>
                     <div><strong>Funds available:</strong> {fmtFunds(m.funds_available)}</div>

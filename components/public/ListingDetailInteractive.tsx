@@ -60,13 +60,13 @@ export default function ListingDetailInteractive({ listing }: { listing: PublicL
 
   return (
     <ToastProvider>
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 24, alignItems: 'start' }}>
+      <div className="grid-responsive collapse-md" style={{ '--grid-cols': '2fr 1fr', '--grid-gap': '24px', alignItems: 'start' } as React.CSSProperties}>
         {/* LEFT: gallery + about */}
         <div>
           {/* Gallery */}
           {gallery.length > 0 ? (
             <div style={{ background: '#fff', border: '1px solid #ece8dc', borderRadius: 12, overflow: 'hidden' }}>
-              <div style={{ height: 420, background: '#1a1a2e', position: 'relative' }}>
+              <div className="listing-gallery-image" style={{ background: '#1a1a2e', position: 'relative' }}>
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src={gallery[activeImage]} alt={listing.business_name || ''} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
               </div>
@@ -86,7 +86,7 @@ export default function ListingDetailInteractive({ listing }: { listing: PublicL
               )}
             </div>
           ) : (
-            <div style={{ height: 420, background: 'linear-gradient(135deg,#1a1a2e,#26264a)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(201,168,76,0.5)', fontSize: 60 }}>🏢</div>
+            <div className="listing-gallery-image" style={{ background: 'linear-gradient(135deg,#1a1a2e,#26264a)', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'rgba(201,168,76,0.5)', fontSize: 60 }}>🏢</div>
           )}
 
           {/* About */}
@@ -108,7 +108,7 @@ export default function ListingDetailInteractive({ listing }: { listing: PublicL
         </div>
 
         {/* RIGHT: financial snapshot card */}
-        <div style={{ position: 'sticky', top: 88 }}>
+        <div className="sticky-sidebar" style={{ top: 88 }}>
           <div style={{ background: '#fff', border: '1px solid #ece8dc', borderRadius: 12, overflow: 'hidden', boxShadow: '0 6px 30px rgba(26,26,46,0.08)' }}>
             <div style={{ background: '#1a1a2e', color: '#c9a84c', padding: '16px 20px', fontFamily: 'Georgia, serif', fontWeight: 700, fontSize: 15 }}>Financial Snapshot</div>
             <div style={{ padding: 20 }}>

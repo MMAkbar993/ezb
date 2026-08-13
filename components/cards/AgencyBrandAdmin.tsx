@@ -107,7 +107,7 @@ export default function AgencyBrandAdmin() {
         Set the default brand for business cards and marketing materials. Every broker inherits these by default and may override their own.
       </p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginTop: 14 }}>
+      <div className="grid-2" style={{ gap: 14, marginTop: 14 }}>
         {([
           ['primaryColor', 'Primary Color'],
           ['secondaryColor', 'Secondary Color'],

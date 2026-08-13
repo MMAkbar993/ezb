@@ -22,7 +22,7 @@ const S = {
     border: '1px solid var(--line)', background: '#fff', color: 'var(--text)', fontSize: 14,
     fontFamily: 'Georgia, serif', outline: 'none',
   } as React.CSSProperties,
-  grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 },
+  grid: { gap: 12, marginBottom: 14 } as React.CSSProperties,
   sectionTitle: {
     fontSize: 12, textTransform: 'uppercase', letterSpacing: 1.2, color: 'var(--gold-dark)',
     fontWeight: 700, marginBottom: 12,
@@ -94,7 +94,7 @@ export default function LicenseSettings() {
     <form onSubmit={handleSave}>
       <div style={CARD}>
         <div style={S.sectionTitle}>Real Estate License</div>
-        <div style={S.grid}>
+        <div className="grid-2" style={S.grid}>
           <div>
             <label style={S.label}>License Number</label>
             <input style={S.input} value={form.license_number} onChange={(e) => setForm((f) => ({ ...f, license_number: e.target.value }))} placeholder="e.g. 1234567" />

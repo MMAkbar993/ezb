@@ -50,7 +50,7 @@ function SellContent() {
   }
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'start' }}>
+    <div className="grid-2" style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 24px', gap: 48, alignItems: 'start' }}>
       {/* LEFT copy */}
       <div>
         <div style={{ color: '#c9a84c', fontSize: 13, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700 }}>Sell Your Business</div>
@@ -81,14 +81,14 @@ function SellContent() {
       </div>
 
       {/* RIGHT form */}
-      <div style={{ background: '#fff', border: '1px solid #ece8dc', borderRadius: 14, padding: 32, boxShadow: '0 8px 40px rgba(26,26,46,0.1)', position: 'sticky', top: 88 }}>
+      <div className="sticky-sidebar" style={{ background: '#fff', border: '1px solid #ece8dc', borderRadius: 14, padding: 32, boxShadow: '0 8px 40px rgba(26,26,46,0.1)', top: 88 }}>
         <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 22, color: '#1a1a2e', margin: '0 0 4px' }}>Request a Free Valuation</h2>
         <p style={{ fontSize: 13, color: '#888', margin: '0 0 20px' }}>100% confidential. No obligation.</p>
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           <Field label="Full Name *"><input className="input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></Field>
           <Field label="Email *"><input className="input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></Field>
           <Field label="Phone"><input className="input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></Field>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+          <div className="grid-2" style={{ gap: 12 }}>
             <Field label="Business Name"><input className="input" value={form.businessName} onChange={(e) => setForm({ ...form, businessName: e.target.value })} /></Field>
             <Field label="Annual Revenue"><input className="input" type="number" value={form.annualRevenue} onChange={(e) => setForm({ ...form, annualRevenue: e.target.value })} /></Field>
           </div>

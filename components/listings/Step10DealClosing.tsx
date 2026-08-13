@@ -71,7 +71,7 @@ export default function Step10DealClosing({ listingId, onNext }: { listingId: st
       </label>
 
       {stage === 'closing' && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14, marginBottom: 14 }}>
+        <div className="grid-2" style={{ gap: 14, marginBottom: 14 }}>
           <label style={stepLabel}>Closing date<input type="date" value={closingDate} onChange={(e) => setClosingDate(e.target.value)} style={stepField} /></label>
           <label style={stepLabel}>Final purchase price<input type="number" value={finalPrice} onChange={(e) => setFinalPrice(e.target.value)} placeholder="0" style={stepField} /></label>
         </div>

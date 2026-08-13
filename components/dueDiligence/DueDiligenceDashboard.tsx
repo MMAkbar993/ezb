@@ -217,7 +217,7 @@ function DDItemForm({ onClose, onSubmit }: { onClose: () => void; onSubmit: (inp
             <label className="label">Item Title *</label>
             <input className="input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. Review financial statements" autoFocus />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 20 }}>
+          <div className="grid-2" style={{ gap: 12, marginBottom: 20 }}>
             <div>
               <label className="label">Category</label>
               <select className="select" value={category} onChange={(e) => setCategory(e.target.value)}>

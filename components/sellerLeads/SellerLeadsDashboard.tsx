@@ -181,8 +181,9 @@ export default function SellerLeadsDashboard() {
         </div>
       ) : (
         <div style={{ background: '#fff', borderRadius: '12px', border: '1px solid #e2e8f0', overflow: 'hidden' }}>
+          <div className="table-scroll">
           {/* Table header */}
-          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1.5fr', gap: '12px', padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1.5fr', gap: '12px', padding: '12px 16px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', fontSize: '11px', fontWeight: 700, color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.05em', minWidth: 640 }}>
             <div>Business</div>
             <div>Email</div>
             <div>Phone</div>
@@ -193,7 +194,7 @@ export default function SellerLeadsDashboard() {
           {filtered.map((lead) => {
             const meta = statusMeta(lead.status)
             return (
-              <div key={lead.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1.5fr', gap: '12px', padding: '12px 16px', borderBottom: '1px solid #f1f5f9', alignItems: 'center' }}>
+              <div key={lead.id} style={{ display: 'grid', gridTemplateColumns: '2fr 1.2fr 1fr 1fr 1.5fr', gap: '12px', padding: '12px 16px', borderBottom: '1px solid #f1f5f9', alignItems: 'center', minWidth: 640 }}>
                 {/* Business */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }} onClick={() => openDetail(lead)}>
                   <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: '#dcfce7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, fontSize: '13px', color: '#15803d', flexShrink: 0 }}>
@@ -225,6 +226,7 @@ export default function SellerLeadsDashboard() {
               </div>
             )
           })}
+          </div>
         </div>
       )}
 

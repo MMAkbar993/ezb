@@ -54,7 +54,7 @@ function Performance() {
       <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 26, color: 'var(--navy)', marginBottom: 6 }}>Agent Performance</h1>
       <p style={{ color: 'var(--muted)', marginBottom: 20 }}>Track listings, deals, commissions, and close velocity per agent.</p>
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 20 }}>
+      <div className="grid-4" style={{ gap: 14, marginBottom: 20 }}>
         {[
           ['Team listings', deals.length + agents.length, '#0b1f3a'],
           ['Deals', deals.length, '#3b82f6'],

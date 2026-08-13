@@ -124,7 +124,7 @@ export default function DesignStudio() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '380px 1fr', gap: 22, alignItems: 'start' }}>
+      <div className="grid-responsive collapse-md" style={{ '--grid-cols': '380px 1fr', '--grid-gap': '22px', alignItems: 'start' } as React.CSSProperties}>
         {/* Controls */}
         <div>
           {/* Sides */}
@@ -139,7 +139,7 @@ export default function DesignStudio() {
           {/* Brand */}
           <div style={S.panel}>
             <div style={S.sectionTitle}>Brand Colors</div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+            <div className="grid-2" style={{ gap: 10 }}>
               {(['primaryColor', 'secondaryColor', 'accentColor'] as const).map((f) => (
                 <div key={f} style={S.field}>
                   <span style={S.label}>{f.replace('Color', ' ').replace(/^\w/, (c) => c.toUpperCase())}</span>

@@ -75,7 +75,7 @@ export default function SellerLeadFormModal({ lead, onClose, onSubmit }: SellerL
             />
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '16px' }}>
+          <div className="grid-2" style={{ gap: '12px', marginBottom: '16px' }}>
             <div>
               <label style={labelStyle}>Email</label>
               <input style={inputStyle} type="email" value={form.email} onChange={(e) => set('email', e.target.value)} placeholder="seller@example.com" />

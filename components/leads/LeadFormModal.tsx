@@ -144,7 +144,7 @@ export default function LeadFormModal({ lead, mode: initialMode, onClose, onSubm
             </div>
           )}
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+          <div className="grid-2" style={{ gap: 12, marginBottom: 16 }}>
             <div>
               <label className="label">Email</label>
               <input className="input" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="email@example.com" />
@@ -177,7 +177,7 @@ export default function LeadFormModal({ lead, mode: initialMode, onClose, onSubm
                 </select>
               </div>
 
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 16 }}>
+              <div className="grid-2" style={{ gap: 12, marginBottom: 16 }}>
                 <div>
                   <label className="label">Funds available ($)</label>
                   <input className="input" type="number" value={funds} onChange={(e) => setFunds(e.target.value)} placeholder="e.g. 750000" />

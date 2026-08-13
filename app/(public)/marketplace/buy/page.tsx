@@ -50,7 +50,7 @@ function BuyContent() {
   }
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 24px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 48, alignItems: 'start' }}>
+    <div className="grid-2" style={{ maxWidth: 1100, margin: '0 auto', padding: '60px 24px', gap: 48, alignItems: 'start' }}>
       <div>
         <div style={{ color: '#c9a84c', fontSize: 13, letterSpacing: '0.2em', textTransform: 'uppercase', fontWeight: 700 }}>Buy a Business</div>
         <h1 style={{ fontFamily: 'Georgia, serif', fontSize: 40, color: '#1a1a2e', margin: '12px 0 16px', lineHeight: 1.15 }}>
@@ -79,7 +79,7 @@ function BuyContent() {
         </div>
       </div>
 
-      <div style={{ background: '#fff', border: '1px solid #ece8dc', borderRadius: 14, padding: 32, boxShadow: '0 8px 40px rgba(26,26,46,0.1)', position: 'sticky', top: 88 }}>
+      <div className="sticky-sidebar" style={{ background: '#fff', border: '1px solid #ece8dc', borderRadius: 14, padding: 32, boxShadow: '0 8px 40px rgba(26,26,46,0.1)', top: 88 }}>
         <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 22, color: '#1a1a2e', margin: '0 0 4px' }}>Tell Us What You're Looking For</h2>
         <p style={{ fontSize: 13, color: '#888', margin: '0 0 20px' }}>Confidential. No obligation.</p>
         <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

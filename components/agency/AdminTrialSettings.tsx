@@ -83,7 +83,7 @@ export default function AdminTrialSettings() {
       <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 14, padding: 20, marginBottom: 18 }}>
         <h2 style={{ fontSize: 16, marginTop: 0 }}>Global default plan</h2>
         {row && (
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 14 }}>
+          <div className="grid-3" style={{ gap: 14 }}>
             <div><label style={lbl}>Trial period (days)</label>
               <select style={num('trial_days')} value={row.trial_days} onChange={(e) => setRow({ ...row, trial_days: Number(e.target.value) })}>
                 {[7, 14, 30, 60].map((d) => <option key={d} value={d}>{d} days</option>)}

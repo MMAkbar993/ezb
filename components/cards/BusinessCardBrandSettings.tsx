@@ -276,13 +276,13 @@ export default function BusinessCardBrandSettings() {
           Photos, custom back text, and a QR code that saves your contact. Preview updates in real time.
         </p>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 360px', gap: 24, alignItems: 'start', marginTop: 16 }}>
+        <div className="grid-responsive collapse-md" style={{ '--grid-cols': '1fr 360px', '--grid-gap': '24px', alignItems: 'start', marginTop: 16 } as React.CSSProperties}>
           {/* Left: controls */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 18 }}>
             {/* Contact text */}
             <div>
               <div style={S.section}>Contact Info</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="grid-2" style={{ gap: 12 }}>
                 {([
                   ['name', 'Full name'], ['title', 'Title'], ['company', 'Company'],
                   ['phone', 'Phone'], ['email', 'Email'], ['website', 'Website'],
@@ -329,7 +329,7 @@ export default function BusinessCardBrandSettings() {
             {/* Colors */}
             <div>
               <div style={S.section}>Brand Colors</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 14 }}>
+              <div className="grid-2" style={{ gap: 14 }}>
                 <ColorField label="Primary" value={form.primaryColor} agencyDefault={agencyDefaults?.primaryColor || '#1a1a2e'} onValue={(v) => patch({ primaryColor: v })} onClear={() => { if (ctx.brokerProfileId) clearBrokerCardOverride(ctx.brokerProfileId, 'primaryColor'); patch({ primaryColor: agencyDefaults?.primaryColor || '#1a1a2e' }); }} />
                 <ColorField label="Secondary" value={form.secondaryColor} agencyDefault={agencyDefaults?.secondaryColor || '#16213e'} onValue={(v) => patch({ secondaryColor: v })} onClear={() => { if (ctx.brokerProfileId) clearBrokerCardOverride(ctx.brokerProfileId, 'secondaryColor'); patch({ secondaryColor: agencyDefaults?.secondaryColor || '#16213e' }); }} />
                 <ColorField label="Accent" value={form.accentColor} agencyDefault={agencyDefaults?.accentColor || '#c9a84c'} onValue={(v) => patch({ accentColor: v })} onClear={() => { if (ctx.brokerProfileId) clearBrokerCardOverride(ctx.brokerProfileId, 'accentColor'); patch({ accentColor: agencyDefaults?.accentColor || '#c9a84c' }); }} />
@@ -377,7 +377,7 @@ export default function BusinessCardBrandSettings() {
                 <span style={S.label}>Custom back text ({backText.length}/500)</span>
                 <textarea value={backText} maxLength={500} onChange={(e) => { setBackText(e.target.value); setSaved(false); }} style={S.textarea} placeholder="e.g. Let's connect — buying or selling a business, I'm here to help you navigate every step." />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 10 }}>
+              <div className="grid-2" style={{ gap: 12, marginTop: 10 }}>
                 <div style={S.field}>
                   <span style={S.label}>QR style</span>
                   <div style={{ display: 'flex', gap: 6 }}>

@@ -67,7 +67,7 @@ export default function Dashboard() {
         <StatCard label="New Leads" value={stats?.newLeads || 0} icon="✨" accent="#3b82f6" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20, alignItems: 'start' }}>
+      <div className="grid-responsive collapse-md" style={{ '--grid-cols': '2fr 1fr', '--grid-gap': '20px', alignItems: 'start' } as React.CSSProperties}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Pipeline funnel */}
           <Card>

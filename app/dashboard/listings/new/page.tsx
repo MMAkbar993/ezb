@@ -147,7 +147,7 @@ function NewListingForm() {
       <p style={{ color: 'var(--muted)', marginBottom: 24 }}>Create a listing to begin the guided 10-step workflow. You can add financials and documents as you go.</p>
 
       <div style={{ padding: '28px 32px', background: '#fff', border: '1px solid var(--line)', borderRadius: 14 }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 18px' }} className="wf-grid-2">
+        <div className="wf-grid-2" style={{ gap: '0 18px' }}>
           <div style={{ gridColumn: '1 / -1' }}>{input('business_name', 'e.g. Acme Landscaping LLC', 'Business name *')}</div>
           {input('headline', 'Short marketing headline', 'Headline')}
           {input('industry', 'e.g. Landscaping', 'Industry')}

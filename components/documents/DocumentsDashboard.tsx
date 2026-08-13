@@ -118,7 +118,7 @@ export default function DocumentsDashboard() {
       )}
 
       {/* Layout: documents (left, 2/3) + activity (right, 1/3) */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '20px', alignItems: 'start' }}>
+      <div className="grid-responsive collapse-md" style={{ '--grid-cols': '2fr 1fr', '--grid-gap': '20px', alignItems: 'start' } as React.CSSProperties}>
         {/* Documents grouped by deal/listing */}
         <div>
           {loading ? (

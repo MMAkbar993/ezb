@@ -83,7 +83,7 @@ function CommandCenter() {
       </header>
 
       {/* Stats row */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 14, marginBottom: 18 }}>
+      <div className="grid-4" style={{ gap: 14, marginBottom: 18 }}>
         {[['Total', stats.total, '#0b1f3a'], ['Active', stats.active, '#16a34a'], ['Pending / Contract', stats.pending, '#b45309'], ['Sold', stats.sold, '#0e7490']].map(([l, v, c]) => (
           <div key={l as string} style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 12, padding: '16px 18px' }}>
             <div style={{ fontSize: 12, textTransform: 'uppercase', letterSpacing: 0.5, color: 'var(--muted)' }}>{l}</div>

@@ -132,7 +132,7 @@ function PortalBody() {
       </header>
 
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '24px' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'start' }}>
+        <div className="grid-2" style={{ gap: 20, alignItems: 'start' }}>
           {/* Milestones */}
           <div style={{ background: '#fff', border: '1px solid var(--line)', borderRadius: 12, padding: 20 }}>
             <h2 style={{ fontFamily: 'Georgia, serif', fontSize: 18, color: 'var(--navy)', margin: '0 0 4px' }}>Transaction milestones</h2>
@@ -238,7 +238,6 @@ function PortalBody() {
       <footer style={{ textAlign: 'center', padding: '20px', color: 'var(--muted-2)', fontSize: 12 }}>
         CONCORD Deal Platform · Secure client portal
       </footer>
-      <style>{`@media (max-width: 720px){ .portal-grid{grid-template-columns:1fr} }`}</style>
     </div>
   )
 }

@@ -117,7 +117,7 @@ function NewspaperDashboard() {
         </button>
       </header>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '260px 1fr', gap: 20, alignItems: 'start' }}>
+      <div className="grid-responsive collapse-md" style={{ '--grid-cols': '260px 1fr', '--grid-gap': '20px', alignItems: 'start' } as React.CSSProperties}>
         {/* Editions list */}
         <Card>
           <CardHeader title="Editions" subtitle={`${editions.length} total`} />
@@ -143,7 +143,7 @@ function NewspaperDashboard() {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
             {/* Meta */}
             <Card>
-              <div style={{ padding: 16, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+              <div className="grid-2" style={{ padding: 16, gap: 12 }}>
                 <label style={lbl}>Title <input value={title} onChange={(e) => setTitle(e.target.value)} style={inp} /></label>
                 <label style={lbl}>Issue <input value={issueLabel} onChange={(e) => setIssueLabel(e.target.value)} style={inp} /></label>
                 <label style={{ ...lbl, gridColumn: '1 / -1' }}>Editor's summary <input value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="One-line editorial note (optional)" style={inp} /></label>

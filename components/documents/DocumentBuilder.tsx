@@ -37,8 +37,7 @@ const S = {
     border: '1px solid var(--line)', background: '#fff', color: 'var(--text)', fontSize: 14,
     fontFamily: 'Georgia, serif', outline: 'none', minHeight: 96, resize: 'vertical',
   } as React.CSSProperties,
-  row: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 },
-  grid: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 8 },
+  grid: { gap: 12, marginTop: 8 } as React.CSSProperties,
   sectionTitle: {
     fontSize: 12, textTransform: 'uppercase', letterSpacing: 1.2, color: 'var(--gold-dark)',
     fontWeight: 700, marginBottom: 10,
@@ -197,7 +196,7 @@ export default function DocumentBuilder({ listingId, dealId }: { listingId?: str
 
           <div style={S.card}>
             <div style={S.sectionTitle}>3 · Fillable Fields</div>
-            <div style={S.grid}>
+            <div className="grid-2" style={S.grid}>
               {template.fields.map((f) => (
                 <div key={f.key} style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
                   <label style={S.label}>{f.label}{f.required ? ' *' : ''}</label>
@@ -213,7 +212,7 @@ export default function DocumentBuilder({ listingId, dealId }: { listingId?: str
             <p style={{ color: 'var(--muted)', fontSize: 12.5, marginBottom: 12 }}>
               Smart assignment: the Agent party defaults to the signed-in broker; assign Seller/Buyer manually.
             </p>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <div className="grid-2" style={{ gap: 12 }}>
               {template.parties.map((p) => (
                 <div key={p.key} style={{ ...S.card, padding: 14, marginBottom: 0 }}>
                   <div style={{ ...S.label, textTransform: 'capitalize' }}>

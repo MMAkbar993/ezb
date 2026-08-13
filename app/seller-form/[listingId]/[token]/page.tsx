@@ -113,7 +113,7 @@ export default function SellerFormSignPage() {
               {payload.schema.requiresSignature && (
                 <div style={{ marginTop: 26, paddingTop: 20, borderTop: '1px solid #ece8dc' }}>
                   <div style={{ fontSize: 13, fontWeight: 700, color: '#0b1f3a', marginBottom: 12 }}>Signature</div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                  <div className="grid-2" style={{ gap: 12, marginBottom: 12 }}>
                     <div>
                       <label className="label">Full Name (typed signature) *</label>
                       <input className="input" value={signerName} onChange={(e) => setSignerName(e.target.value)} required />

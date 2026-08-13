@@ -114,30 +114,32 @@ export default function BillingDashboard() {
           {invoices.length === 0 ? (
             <div style={{ color: 'var(--muted)', fontSize: 13, padding: 12 }}>No invoices yet. Invoices appear after your trial ends or when you upgrade.</div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
-              <thead>
-                <tr style={{ borderBottom: '2px solid var(--navy)', textAlign: 'left', color: 'var(--navy)' }}>
-                  <th style={{ padding: '10px 12px' }}>Date</th>
-                  <th style={{ padding: '10px 12px' }}>Amount</th>
-                  <th style={{ padding: '10px 12px' }}>Status</th>
-                  <th style={{ padding: '10px 12px' }}>Invoice</th>
-                </tr>
-              </thead>
-              <tbody>
-                {invoices.map((inv) => (
-                  <tr key={inv.id} style={{ borderBottom: '1px solid var(--line)' }}>
-                    <td style={{ padding: '10px 12px' }}>{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : '—'}</td>
-                    <td style={{ padding: '10px 12px', fontWeight: 700 }}>${Number(inv.amount).toFixed(2)} {inv.currency.toUpperCase()}</td>
-                    <td style={{ padding: '10px 12px' }}>
-                      <Badge color={inv.status === 'paid' ? '#22c55e' : '#f59e0b'}>{inv.status}</Badge>
-                    </td>
-                    <td style={{ padding: '10px 12px' }}>
-                      {inv.pdf_url ? <a href={inv.pdf_url} target="_blank" rel="noreferrer" style={{ color: 'var(--gold-dark)', fontWeight: 600 }}>Download PDF</a> : <span style={{ color: 'var(--muted)' }}>Pending</span>}
-                    </td>
+            <div className="table-scroll">
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 14 }}>
+                <thead>
+                  <tr style={{ borderBottom: '2px solid var(--navy)', textAlign: 'left', color: 'var(--navy)' }}>
+                    <th style={{ padding: '10px 12px' }}>Date</th>
+                    <th style={{ padding: '10px 12px' }}>Amount</th>
+                    <th style={{ padding: '10px 12px' }}>Status</th>
+                    <th style={{ padding: '10px 12px' }}>Invoice</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {invoices.map((inv) => (
+                    <tr key={inv.id} style={{ borderBottom: '1px solid var(--line)' }}>
+                      <td style={{ padding: '10px 12px' }}>{inv.created_at ? new Date(inv.created_at).toLocaleDateString() : '—'}</td>
+                      <td style={{ padding: '10px 12px', fontWeight: 700 }}>${Number(inv.amount).toFixed(2)} {inv.currency.toUpperCase()}</td>
+                      <td style={{ padding: '10px 12px' }}>
+                        <Badge color={inv.status === 'paid' ? '#22c55e' : '#f59e0b'}>{inv.status}</Badge>
+                      </td>
+                      <td style={{ padding: '10px 12px' }}>
+                        {inv.pdf_url ? <a href={inv.pdf_url} target="_blank" rel="noreferrer" style={{ color: 'var(--gold-dark)', fontWeight: 600 }}>Download PDF</a> : <span style={{ color: 'var(--muted)' }}>Pending</span>}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           )}
         </div>
       </Card>

@@ -145,7 +145,7 @@ export default function AnalyticsDashboard() {
         </div>
       </Card>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, alignItems: 'stretch' }}>
+      <div className="grid-2" style={{ gap: 20, alignItems: 'stretch' }}>
         {/* Pipeline value over time */}
         <Card>
           <CardHeader title="Deal Pipeline Value" subtitle="Active deal value by month" />

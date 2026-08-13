@@ -141,7 +141,7 @@ export default function DealPipeline() {
           onDragOver={(e: DragOverEvent) => {}}
           onDragEnd={handleDragEnd}
         >
-          <div style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 8 }}>
+          <div className="kanban-scroll" style={{ display: 'flex', gap: 14, overflowX: 'auto', paddingBottom: 8 }}>
             {PIPELINE_STAGES.map((stage) => {
               const stageDeals = dealsByStage(stage.id)
               return (

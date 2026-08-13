@@ -65,7 +65,7 @@ export default function AgencyTrialSignup() {
       </div>
 
       {/* mode toggle */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, marginBottom: 18 }}>
+      <div className="grid-2" style={{ gap: 8, marginBottom: 18 }}>
         <button
           type="button" onClick={() => setMode('trial')}
           style={{
@@ -99,7 +99,7 @@ export default function AgencyTrialSignup() {
         {/* plan tier (only relevant when subscribing) */}
         <div>
           <label style={{ display: 'block', fontSize: 13, fontWeight: 700, marginBottom: 5 }}>Plan {mode === 'trial' ? `(after trial you'll pick — showing ${tier})` : ''}</label>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 8 }}>
+          <div className="grid-3" style={{ gap: 8 }}>
             {(['starter', 'professional', 'enterprise'] as const).map((t) => (
               <button
                 type="button" key={t} onClick={() => setTier(t)}

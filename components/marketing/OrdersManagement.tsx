@@ -114,7 +114,7 @@ export default function OrdersManagement() {
           {showCheckout && (
             <div style={{ marginTop: 16, borderTop: '1px solid var(--line)', paddingTop: 14 }}>
               <div style={{ ...S.label, fontFamily: 'Georgia, serif', fontWeight: 700, color: 'var(--navy)', fontSize: 15, marginBottom: 10 }}>Shipping Address</div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+              <div className="grid-2" style={{ gap: 10 }}>
                 {([
                   ['name', 'Full name'], ['line1', 'Address line 1'], ['city', 'City'],
                   ['state', 'State'], ['zip', 'ZIP'], ['country', 'Country'],

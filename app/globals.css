@@ -363,18 +363,94 @@ h1, h2, h3, h4 {
   border-bottom: 1px solid var(--line);
 }
 
+/* Same shape as .grid-2/3/4 above, for the workflow-step and portal pages
+   that already apply these classNames but never had matching rules. */
+.wf-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.wf-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.wf-grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.portal-grid { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 20px; }
+
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
   .grid-4 { grid-template-columns: repeat(2, 1fr); }
   .grid-3 { grid-template-columns: 1fr; }
   .grid-2 { grid-template-columns: 1fr; }
+  .wf-grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .wf-grid-3 { grid-template-columns: 1fr; }
+  .wf-grid-2 { grid-template-columns: 1fr; }
+  .portal-grid { grid-template-columns: 1fr; }
 }
 @media (max-width: 560px) {
   .grid-4 { grid-template-columns: 1fr; }
+  .wf-grid-4 { grid-template-columns: 1fr; }
+}
+
+/* ---- Responsive grid for UNEQUAL column ratios (2fr 1fr, 300px 1fr, etc.) ----
+   The desktop ratio is passed in per-instance via the --grid-cols custom
+   property (set inline); grid-template-columns itself is only ever set here,
+   in the stylesheet, via var() — never inline — so these media queries can
+   cleanly override it. An inline style can never be beaten by a stylesheet
+   rule, but a custom property feeding a stylesheet rule can. */
+.grid-responsive {
+  display: grid;
+  grid-template-columns: var(--grid-cols, 1fr);
+  gap: var(--grid-gap, 16px);
+}
+@media (max-width: 900px) {
+  .grid-responsive.collapse-md { grid-template-columns: 1fr; }
+}
+@media (max-width: 560px) {
+  .grid-responsive.collapse-sm { grid-template-columns: 1fr; }
 }
 
 /* ---- Scrollable horizontal tables ---- */
 .table-scroll { overflow-x: auto; }
+
+/* ---- App shell (dashboard) responsive sidebar ---- */
+.appshell-toggle { display: none; }
+.appshell-sidebar { transition: transform 0.25s ease; }
+@media (max-width: 900px) {
+  .appshell-toggle { display: inline-flex !important; }
+  .appshell-sidebar {
+    position: fixed !important;
+    inset: 0 auto 0 0;
+    transform: translateX(-100%);
+    z-index: 55;
+  }
+  .appshell-sidebar.open { transform: translateX(0); }
+  .appshell-main { padding-top: 64px !important; }
+  .appshell-topbar { padding: 12px 16px !important; }
+  .appshell-content { padding: 20px 16px !important; }
+}
+
+/* ---- Public site nav responsive menu ---- */
+/* The mobile dropdown itself is JSX-conditional (PublicNav.tsx renders it
+   only when `open` is true), so only the desktop link row / toggle button
+   visibility needs a CSS-driven breakpoint. */
+.publicnav-links { display: flex; }
+.publicnav-toggle { display: none; }
+@media (max-width: 860px) {
+  .publicnav-links { display: none; }
+  .publicnav-toggle { display: inline-flex !important; }
+}
+
+/* ---- Sticky sidebar (public listing detail, buy/sell pages): only stick
+   once it's actually a side column — once collapse-md puts it in normal
+   flow on mobile, sticking mid-scroll looks broken. ---- */
+.sticky-sidebar { position: sticky; }
+@media (max-width: 900px) {
+  .sticky-sidebar { position: static; }
+}
+
+/* ---- Public listing gallery: shrink on small screens ---- */
+.listing-gallery-image { height: 420px; }
+@media (max-width: 600px) {
+  .listing-gallery-image { height: 240px; }
+}
+
+/* ---- Kanban: snap columns into place on swipe ---- */
+.kanban-scroll { scroll-snap-type: x proximity; }
+.kanban-scroll > * { scroll-snap-align: start; }
 
 /* ---- Legal documents ---- */
 .legal-body h2 {

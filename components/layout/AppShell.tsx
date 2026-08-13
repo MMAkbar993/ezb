@@ -94,17 +94,20 @@ export default function AppShell({
   return (
     <ToastProvider>
       <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--paper)' }}>
-        {/* Mobile toggle */}
+        {/* Mobile toggle — visibility controlled by CSS (.appshell-toggle,
+            app/globals.css) so it only appears under the 900px breakpoint;
+            an inline `display` ternary can't be overridden by a media query. */}
         <button
           onClick={() => setOpen(!open)}
+          className="appshell-toggle"
+          aria-label={open ? 'Close menu' : 'Open menu'}
           style={{
             position: 'fixed', top: 12, left: 12, zIndex: 60,
-            display: open ? 'none' : 'inline-flex',
             background: 'var(--navy)', color: '#fff', border: 'none',
             borderRadius: 6, padding: '8px 12px', fontSize: 16, cursor: 'pointer',
           }}
         >
-          ☰
+          {open ? '✕' : '☰'}
         </button>
 
         {/* Overlay for mobile */}
@@ -115,15 +118,18 @@ export default function AppShell({
           />
         )}
 
-        {/* Sidebar */}
+        {/* Sidebar — .appshell-sidebar (app/globals.css) goes off-canvas
+            (position: fixed + translateX(-100%)) under the 900px breakpoint
+            and slides in when the .open class is present; unchanged (sticky,
+            always visible) above that breakpoint. */}
         <aside
+          className={`appshell-sidebar${open ? ' open' : ''}`}
           style={{
             width: 240, flexShrink: 0,
             background: 'linear-gradient(180deg, var(--navy) 0%, var(--navy-2) 100%)',
             color: '#fff', display: 'flex', flexDirection: 'column',
             position: 'sticky', top: 0, height: '100vh',
-            transition: 'transform 0.25s ease', zIndex: 50,
-            transform: open ? 'translateX(0)' : undefined,
+            zIndex: 50,
           }}
         >
           {/* Brand */}
@@ -171,14 +177,14 @@ export default function AppShell({
         </aside>
 
         {/* Main */}
-        <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
+        <main className="appshell-main" style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column' }}>
           {/* Top header with global search */}
-          <div style={{ padding: '14px 40px', borderBottom: '1px solid var(--line)', background: '#fff', display: 'flex', justifyContent: 'flex-end' }}>
+          <div className="appshell-topbar" style={{ padding: '14px 40px', borderBottom: '1px solid var(--line)', background: '#fff', display: 'flex', justifyContent: 'flex-end', flexWrap: 'wrap', gap: 10 }}>
             <div style={{ width: '100%', maxWidth: 420 }}>
               <SearchBar backdrop />
             </div>
           </div>
-          <div style={{ padding: '32px 40px' }}>
+          <div className="appshell-content" style={{ padding: '32px 40px' }}>
             <RoleContext.Provider value={roleState}>{children}</RoleContext.Provider>
           </div>
         </main>
