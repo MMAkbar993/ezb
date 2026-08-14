@@ -18,11 +18,25 @@ export default function ListingsDashboard() {
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Listing | null>(null)
   const [statusFilter, setStatusFilter] = useState('all')
+  const [workflows, setWorkflows] = useState<Record<string, { current_step: number; completed_at: string | null }>>({})
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      setListings(await fetchListings())
+      const rows = await fetchListings()
+      setListings(rows)
+      // Bulk-fetch workflow progress so each card can offer "Continue Setup"
+      // for listings that haven't finished the guided workflow — previously
+      // this page had no link back into it at all once you left mid-flow.
+      const ids = rows.map((l) => l.id)
+      if (ids.length > 0) {
+        const { data: wf } = await supabase.from('listing_workflows').select('listing_id, current_step, completed_at').in('listing_id', ids)
+        const map: Record<string, { current_step: number; completed_at: string | null }> = {}
+        for (const w of wf || []) map[w.listing_id] = { current_step: w.current_step, completed_at: w.completed_at }
+        setWorkflows(map)
+      } else {
+        setWorkflows({})
+      }
     } catch (e: any) {
       toast(e.message, 'error')
     } finally {
@@ -161,7 +175,16 @@ export default function ListingsDashboard() {
                 </div>
 
                 {/* Actions */}
-                <div style={{ display: 'flex', gap: 8, marginTop: 14 }}>
+                {!workflows[listing.id]?.completed_at && (
+                  <Link
+                    href={`/dashboard/listings/${listing.id}/workflow`}
+                    className="btn btn-primary"
+                    style={{ display: 'flex', justifyContent: 'center', padding: '8px 10px', fontSize: 13, marginTop: 14 }}
+                  >
+                    ▶ Continue Setup{workflows[listing.id] ? ` (Step ${workflows[listing.id].current_step}/10)` : ''}
+                  </Link>
+                )}
+                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                   <Link href={`/cim?listing=${listing.id}`} className="btn btn-navy" style={{ flex: 1, justifyContent: 'center', padding: '8px 10px', fontSize: 13 }}>📑 CIM</Link>
                   <Link href={`/bov?listing=${listing.id}`} className="btn btn-navy" style={{ flex: 1, justifyContent: 'center', padding: '8px 10px', fontSize: 13 }}>⚖️ BOV</Link>
                   <button className="btn btn-ghost" onClick={() => { setEditing(listing); setShowForm(true) }}>✎</button>

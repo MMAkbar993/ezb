@@ -59,7 +59,8 @@ export interface Deal {
   [key: string]: unknown
 }
 
-// deal_documents: id, deal_id, file_name, file_url, uploaded_by, created_at
+// deal_documents: id, deal_id, file_name, file_url, uploaded_by, created_at,
+// storage_path, category (last two added by sql/deal_documents_storage_path.sql)
 export interface DealDocument {
   id: string
   deal_id: string | null
@@ -67,6 +68,8 @@ export interface DealDocument {
   file_url: string | null
   uploaded_by: string | null
   created_at?: string | null
+  storage_path?: string | null
+  category?: string | null
   [key: string]: unknown
 }
 

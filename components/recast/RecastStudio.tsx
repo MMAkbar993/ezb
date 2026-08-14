@@ -10,6 +10,7 @@ import {
 import { UploadedFinancialDoc, uploadFinancialDocument, extractFinancialDocument } from '@/lib/recastDocs'
 import { fetchListings, Listing } from '@/lib/listings'
 import { saveRecastProject } from '@/lib/recast'
+import { getAccessToken } from '@/lib/financialFiles'
 import { exportRecastToPdf } from '@/lib/pdfExport'
 import { useToast } from '@/components/ui/Toast'
 import { LoadingState, Card, CardHeader, EmptyState, Badge } from '@/components/ui'
@@ -60,11 +61,38 @@ export default function RecastStudio() {
       .catch((e) => { toast(e.message, 'error'); setLoading(false) })
   }, [toast])
 
-  const handleListingChange = (id: string) => {
+  const handleListingChange = async (id: string) => {
     setListingId(id)
     const l = listings.find((x) => x.id === id)
     if (l) {
       setBusinessName(l.business_name || '')
+    }
+    if (!id) return
+
+    // Load the listing's REAL uploaded financials (same extraction the BOV/
+    // CIM generation pipeline uses) instead of leaving the form blank — this
+    // is what makes this tool's numbers match what the rest of the app
+    // actually used, rather than being a disconnected manual guess.
+    try {
+      const token = await getAccessToken()
+      if (!token) return
+      const res = await fetch(`/api/financial/recast-preview?listingId=${encodeURIComponent(id)}`, {
+        headers: { Authorization: 'Bearer ' + token },
+      })
+      const data = await res.json()
+      if (data.ok && Array.isArray(data.history) && data.history.length > 0) {
+        const mapped: YearForm[] = data.history.map((y: YearFinancials) => ({
+          year: y.year, label: y.label,
+          grossRevenue: String(y.grossRevenue || ''), cogs: String(y.cogs || ''),
+          operatingExpenses: String(y.operatingExpenses || ''), ownerComp: String(y.ownerComp || ''),
+          depreciation: String(y.depreciation || ''), interest: String(y.interest || ''),
+          otherExpenses: String(y.otherExpenses || ''), netIncome: String(y.netIncome || ''),
+        }))
+        setYears(mapped)
+        toast(`Loaded real financials for ${l?.business_name || 'this listing'}`, 'success')
+      }
+    } catch {
+      // Silent — the form just stays blank/manual if the preview can't load.
     }
   }
 

@@ -29,6 +29,7 @@
 import { supabase } from '@/lib/supabase/client'
 import { authedFetch } from '@/lib/apiFetch'
 import { FF_BUCKET } from '@/lib/storageBuckets'
+import { advanceDealForListing } from '@/lib/pipeline'
 
 // ---------------------------------------------------------------------------
 // Status constants
@@ -50,7 +51,7 @@ export const STATUS_STYLE: Record<string, { label: string; color: string; bg: st
 export const WORKFLOW_STEPS = [
   { step: 1, key: 'legal_docs', label: 'Legal Docs', icon: '📄', desc: 'Listing agreement & disclosures' },
   { step: 2, key: 'financials', label: 'Financial Details', icon: '💰', desc: 'Revenue, SDE, EBITDA, balance' },
-  { step: 3, key: 'recast', label: 'Recast Financials', icon: '🔄', desc: 'Normalize owner financials' },
+  { step: 3, key: 'recast', label: 'Recast (Automatic)', icon: '🔄', desc: 'Handled automatically during BOV/CIM generation — use the standalone Recast tool for manual what-if adjustments' },
   { step: 4, key: 'bov', label: 'Generate BOV', icon: '⚖️', desc: 'Broker opinion of value' },
   { step: 5, key: 'cim', label: 'Generate CIM', icon: '📑', desc: 'Confidential info memorandum' },
   { step: 6, key: 'bli', label: 'Generate BLI', icon: '📋', desc: 'Business listing info' },
@@ -347,6 +348,7 @@ export async function recordLOI(listingId: string, buyerId: string | null, fileU
       const { error } = await supabase.from('deal_agreements').insert({ listing_id: listingId, buyer_id: buyerId, loi_signed_at: new Date().toISOString(), loi_file_url: fileUrl, status: 'loi' })
       if (error) return false
     }
+    advanceDealForListing(listingId, 'letter_of_intent').catch(() => {})
     return updateStatusFromAgreement(listingId, 'loi')
   } catch { return false }
 }
@@ -366,6 +368,7 @@ export async function recordPurchaseAgreement(listingId: string, buyerId: string
       })
       if (error) return false
     }
+    advanceDealForListing(listingId, 'under_contract').catch(() => {})
     return updateStatusFromAgreement(listingId, 'under_contract')
   } catch { return false }
 }
@@ -381,6 +384,7 @@ export async function recordClosing(listingId: string, details: Partial<any>): P
     if (agreement) {
       await supabase.from('deal_agreements').update({ status: 'closing' }).eq('id', agreement.id)
     }
+    advanceDealForListing(listingId, 'closed').catch(() => {})
     return updateStatusFromAgreement(listingId, 'closing')
   } catch { return false }
 }

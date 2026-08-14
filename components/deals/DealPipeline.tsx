@@ -227,7 +227,7 @@ const fmt = (n: number | null | undefined): string => {
 
 function stageColor(stage: DealStage): string {
   const map: Record<DealStage, string> = {
-    letter_of_intent: '#3b82f6', under_contract: '#f59e0b', due_diligence: '#8b5cf6', closing: '#06b6d4', closed: '#22c55e',
+    prospecting: '#94a3b8', letter_of_intent: '#3b82f6', under_contract: '#f59e0b', due_diligence: '#8b5cf6', closing: '#06b6d4', closed: '#22c55e',
   }
   return map[stage]
 }

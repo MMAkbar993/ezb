@@ -88,7 +88,7 @@ function NewListingForm() {
       setStage('financials')
     } else {
       toast('Listing created')
-      router.push('/dashboard/listings')
+      router.push('/listings')
     }
   }
 

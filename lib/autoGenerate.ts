@@ -182,6 +182,35 @@ async function saveGeneratedDoc(step: {
 // ---------------------------------------------------------------------------
 // Main pipeline
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Read-only preview: the same real-document extraction runAutoGeneration
+// uses (steps 1-4 below), with no generation and no writes. Lets the
+// standalone Recast tool (components/recast/RecastStudio.tsx) start from a
+// listing's actual uploaded financials instead of a blank form — previously
+// it had no way to see what the AI pipeline actually extracted, so its
+// numbers could legitimately disagree with the BOV/CIM the pipeline produced.
+// ---------------------------------------------------------------------------
+export async function getRecastPreview(listingId: string): Promise<{ ok: boolean; error?: string; businessName?: string; history?: YearFinancials[] }> {
+  const supabase = createServerClient()
+  if (!supabase) return { ok: false, error: 'Supabase server client not configured' }
+
+  const { data: listing, error: listingErr } = await supabase.from('listings').select('*').eq('id', listingId).single()
+  if (listingErr || !listing) return { ok: false, error: `Listing not found: ${listingErr?.message || listingId}` }
+  const L = listing as Listing
+
+  const { data: sourceDocs, error: sourceErr } = await supabase
+    .from('financial_documents')
+    .select('*')
+    .eq('listing_id', listingId)
+  if (sourceErr) return { ok: false, error: sourceErr.message }
+  const sources = ((sourceDocs as FinancialDoc[] | null) || []).filter((d) => d.category !== 'generated_document')
+
+  const { ext } = await extractFromDocuments(supabase, L, sources)
+  const history: YearFinancials[] = ext && ext.revenueByYear.length ? aiYearsToRecastInput(ext) : buildFinancialHistory(L, [])
+
+  return { ok: true, businessName: L.business_name || '', history }
+}
+
 export async function runAutoGeneration(input: {
   listingId: string
   dealId?: string | null

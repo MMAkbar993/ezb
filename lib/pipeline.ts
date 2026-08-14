@@ -15,7 +15,7 @@ import { supabase } from '@/lib/supabase/client'
 // stage is stored as `letter_of_intent` (displayed as "LOI").
 // ---------------------------------------------------------------------------
 
-export type DealStage = 'letter_of_intent' | 'under_contract' | 'due_diligence' | 'closing' | 'closed'
+export type DealStage = 'prospecting' | 'letter_of_intent' | 'under_contract' | 'due_diligence' | 'closing' | 'closed'
 
 export interface Deal extends Record<string, unknown> {
   id: string
@@ -38,9 +38,12 @@ export interface PipelineItem extends EnrichedDeal {
   stage: DealStage
 }
 
-// The five board columns, in order
-// NOTE: first stage is stored as `letter_of_intent` (DB constraint) but shown as "LOI".
+// The six board columns, in order. `prospecting` is the auto-created stage
+// every active listing lands in (see ensureDealForListing below) before any
+// buyer interest exists; the rest advance automatically as
+// recordLOI/recordPurchaseAgreement/recordClosing run in lib/workflow.ts.
 export const PIPELINE_STAGES: { id: DealStage; label: string }[] = [
+  { id: 'prospecting', label: 'Prospecting' },
   { id: 'letter_of_intent', label: 'LOI' },
   { id: 'under_contract', label: 'Under Contract' },
   { id: 'due_diligence', label: 'Due Diligence' },
@@ -154,6 +157,42 @@ export async function createDeal(input: DealInput): Promise<Deal> {
     throw new Error(error.message || 'Failed to create deal')
   }
   return data as Deal
+}
+
+// ---------------------------------------------------------------------------
+// Idempotent auto-linkage: called from lib/listings.ts (createListing /
+// updateListing, whenever the resulting status is 'active') and from
+// lib/workflow.ts's LOI/purchase-agreement/closing checkpoints. Ensures every
+// actively-marketed listing has exactly one deals row, without ever creating
+// a duplicate for a listing that already has one.
+// ---------------------------------------------------------------------------
+export async function ensureDealForListing(listingId: string): Promise<Deal | null> {
+  try {
+    const { data: existing } = await supabase.from('deals').select('*').eq('listing_id', listingId).maybeSingle()
+    if (existing) return existing as Deal
+    const { data, error } = await supabase
+      .from('deals')
+      .insert({ listing_id: listingId, status: 'prospecting' })
+      .select()
+      .single()
+    if (error) {
+      console.error('ensureDealForListing error:', error)
+      return null
+    }
+    return data as Deal
+  } catch (e) {
+    console.error('ensureDealForListing exception:', e)
+    return null
+  }
+}
+
+// Advance (or create-then-set) a listing's deal to a specific stage — used
+// by the workflow's LOI/purchase-agreement/closing checkpoints so the
+// pipeline board reflects deal progress automatically.
+export async function advanceDealForListing(listingId: string, stage: DealStage): Promise<void> {
+  const deal = await ensureDealForListing(listingId)
+  if (!deal) return
+  await supabase.from('deals').update({ status: stage, updated_at: new Date().toISOString() }).eq('id', deal.id)
 }
 
 export async function updateDeal(id: string, input: DealInput): Promise<Deal> {

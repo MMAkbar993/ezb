@@ -13,7 +13,6 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import WorkflowDashboard from '@/components/listings/WorkflowDashboard'
 import Step1LegalDocs from '@/components/listings/Step1LegalDocs'
 import Step2FinancialDetails from '@/components/listings/Step2FinancialDetails'
-import Step3RecastFinancial from '@/components/listings/Step3RecastFinancial'
 import Step4GenerateBOV from '@/components/listings/Step4GenerateBOV'
 import Step5GenerateCIM from '@/components/listings/Step5GenerateCIM'
 import Step6GenerateBLI from '@/components/listings/Step6GenerateBLI'
@@ -23,7 +22,7 @@ import Step9BuyerManagement from '@/components/listings/Step9BuyerManagement'
 import Step10DealClosing from '@/components/listings/Step10DealClosing'
 import StatusBadge from '@/components/listings/StatusBadge'
 import SBABadge from '@/components/listings/SBABadge'
-import { getWorkflow, startWorkflow } from '@/lib/workflow'
+import { getWorkflow, startWorkflow, completeStep } from '@/lib/workflow'
 import { fetchListing, fmtMoney } from '@/lib/listings'
 
 export default function WorkflowPage() {
@@ -57,6 +56,21 @@ function WorkflowBody() {
 
   useEffect(() => { load() }, [load])
 
+  // Step 3 ("Recast Financials") is retired from the guided workflow — Recast
+  // now lives only as the standalone /recast tool, which reads a listing's
+  // real financials directly rather than duplicating a form here. Rather than
+  // renumbering steps 4-10 (which would corrupt current_step/completed_steps
+  // for listings already mid-workflow in production), step 3 auto-completes
+  // itself and advances straight to step 4 without ever rendering.
+  useEffect(() => {
+    if (activeStep === 3 && !loading) {
+      completeStep(listingId, 3).then(() => {
+        setActiveStep(4)
+        getWorkflow(listingId).then(setWorkflow)
+      })
+    }
+  }, [activeStep, loading, listingId])
+
   if (loading) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--muted)' }}>Loading workflow…</div>
   if (!listing) return <div style={{ padding: 60, textAlign: 'center', color: 'var(--muted)' }}>Listing not found.</div>
 
@@ -80,7 +94,7 @@ function WorkflowBody() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 14, marginBottom: 16, flexWrap: 'wrap' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-            <button onClick={() => router.push('/dashboard/listings')} style={{ border: 'none', background: 'transparent', fontSize: 20, cursor: 'pointer', color: 'var(--navy)' }}>←</button>
+            <button onClick={() => router.push('/listings')} style={{ border: 'none', background: 'transparent', fontSize: 20, cursor: 'pointer', color: 'var(--navy)' }}>←</button>
             <h1 style={{ margin: 0, fontSize: 24, fontFamily: 'Georgia, serif', color: 'var(--navy)' }}>{listing?.business_name}</h1>
             <StatusBadge status={listing?.status} />
           </div>
@@ -101,7 +115,7 @@ function WorkflowBody() {
       {/* Active step component */}
       {activeStep === 1 && <Step1LegalDocs listingId={listingId} onNext={goNext} />}
       {activeStep === 2 && <Step2FinancialDetails listingId={listingId} onNext={goNext} />}
-      {activeStep === 3 && <Step3RecastFinancial listingId={listingId} onNext={goNext} />}
+      {activeStep === 3 && <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>Advancing…</div>}
       {activeStep === 4 && <Step4GenerateBOV listingId={listingId} onNext={goNext} />}
       {activeStep === 5 && <Step5GenerateCIM listingId={listingId} onNext={goNext} />}
       {activeStep === 6 && <Step6GenerateBLI listingId={listingId} onNext={goNext} />}

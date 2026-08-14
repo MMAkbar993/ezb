@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client'
+import { ensureDealForListing } from '@/lib/pipeline'
 
 // ---------------------------------------------------------------------------
 // Listings CRUD — configured to the REAL listings schema (probed live):
@@ -134,6 +135,13 @@ export async function createListing(input: ListingInput): Promise<Listing> {
     console.error('createListing error:', error)
     throw new Error(error.message || 'Failed to create listing')
   }
+  // Auto-link to the Deal Pipeline as soon as a listing goes live — a
+  // listing previously never showed up on the pipeline board unless a
+  // broker separately created an unrelated "Deal" and picked it from a
+  // dropdown. Best-effort: never block listing creation on this.
+  if ((data as Listing).status === 'active') {
+    ensureDealForListing((data as Listing).id).catch(() => {})
+  }
   return data as Listing
 }
 
@@ -147,6 +155,9 @@ export async function updateListing(id: string, input: ListingInput): Promise<Li
   if (error) {
     console.error('updateListing error:', error)
     throw new Error(error.message || 'Failed to update listing')
+  }
+  if (input.status === 'active') {
+    ensureDealForListing(id).catch(() => {})
   }
   return data as Listing
 }
