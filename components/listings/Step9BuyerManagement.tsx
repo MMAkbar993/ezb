@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { StepShell, stepField, stepLabel, stepBtn } from '@/components/listings/StepShell'
-import { fetchBuyers, addBuyer, updateBuyer, completeStep, recordLOI } from '@/lib/workflow'
+import { fetchBuyers, addBuyer, updateBuyer, completeStep, recordLOI, uploadBuyerNda } from '@/lib/workflow'
+import { getSignedFileUrl } from '@/lib/financialFiles'
 import StatusBadge from '@/components/listings/StatusBadge'
 import BuyerInquiriesList from '@/components/listings/BuyerInquiriesList'
 import { fetchBuyerInquiries, type BuyerInquiry } from '@/lib/buyerInquiries'
@@ -71,6 +72,22 @@ export default function Step9BuyerManagement({ listingId, onNext, onAgreementCha
     await load(); onAgreementChange?.(); setBusy(false)
   }
 
+  const [uploadingNdaFor, setUploadingNdaFor] = useState<string | null>(null)
+
+  const handleNdaUpload = async (buyer: any, file: File) => {
+    setUploadingNdaFor(buyer.id)
+    const ok = await uploadBuyerNda(buyer.id, file)
+    setUploadingNdaFor(null)
+    if (ok) { toast(`NDA saved for ${buyer.buyer_name}`, 'success'); await load() }
+    else toast('Failed to upload NDA', 'error')
+  }
+
+  const viewNda = async (buyer: any) => {
+    const url = await getSignedFileUrl(buyer.nda_document_path)
+    if (url) window.open(url, '_blank', 'noreferrer')
+    else toast('Could not open NDA document', 'error')
+  }
+
   return (
     <StepShell step={9} title="Buyer Management" description="Track interested buyers through NDA and financial qualification. Set a primary buyer; when they sign an LOI the listing advances to Pending Sale."
       status="draft" onNext={async () => { await completeStep(listingId, 9); onNext() }} nextLabel="Step 9 complete →">
@@ -112,6 +129,20 @@ export default function Step9BuyerManagement({ listingId, onNext, onAgreementCha
               </button>
             )}
             <button onClick={() => copyNdaLink(b)} style={chipBtn('#0f3460')}>🔗 Copy NDA link to send</button>
+            {b.nda_document_path ? (
+              <button onClick={() => viewNda(b)} style={chipBtn('#0f3460')}>📄 View/Download NDA</button>
+            ) : (
+              <label style={{ ...chipBtn('#7a7a8a'), display: 'inline-flex', alignItems: 'center' }}>
+                {uploadingNdaFor === b.id ? 'Uploading…' : '📎 Upload NDA for record'}
+                <input
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  disabled={uploadingNdaFor === b.id}
+                  style={{ display: 'none' }}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handleNdaUpload(b, f); e.target.value = '' }}
+                />
+              </label>
+            )}
             <button onClick={() => updateBuyer(b.id, { financial_qualified: !b.financial_qualified }).then(load)} style={chipBtn(b.financial_qualified ? '#16a34a' : '#7a7a8a')}>
               {b.financial_qualified ? '✓ Financially qualified' : 'Mark financially qualified'}
             </button>
@@ -126,6 +157,11 @@ export default function Step9BuyerManagement({ listingId, onNext, onAgreementCha
               </button>
             )}
           </div>
+          {b.nda_document_path && (
+            <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--muted)' }}>
+              📎 {b.nda_document_name || 'NDA document'} on file{b.nda_document_uploaded_at ? ` · uploaded ${new Date(b.nda_document_uploaded_at).toLocaleDateString()}` : ''}
+            </div>
+          )}
           {b.is_primary_buyer && (
             <div style={{ marginTop: 10, fontSize: 12.5, color: 'var(--gold-dark)' }}>When this primary buyer signs an LOI, the listing automatically advances to Pending Sale.</div>
           )}
@@ -137,7 +173,11 @@ export default function Step9BuyerManagement({ listingId, onNext, onAgreementCha
         <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 12px' }}>
           Buyers who signed the NDA and Buyer Profile Form on the public listing page to unlock financials — a real, timestamped record, separate from the manual tracker above.
         </p>
-        <BuyerInquiriesList listingId={listingId} />
+        <BuyerInquiriesList
+          listingId={listingId}
+          trackedEmails={buyers.map((b) => (b.buyer_email || '').toLowerCase()).filter(Boolean)}
+          onPromoted={load}
+        />
       </div>
     </StepShell>
   )

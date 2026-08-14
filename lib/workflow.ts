@@ -28,6 +28,7 @@
 
 import { supabase } from '@/lib/supabase/client'
 import { authedFetch } from '@/lib/apiFetch'
+import { FF_BUCKET } from '@/lib/storageBuckets'
 
 // ---------------------------------------------------------------------------
 // Status constants
@@ -281,6 +282,49 @@ export async function fetchBuyers(listingId: string): Promise<any[]> {
 export async function updateBuyer(id: string, patch: Partial<any>): Promise<boolean> {
   try {
     const { error } = await supabase.from('buyer_lists').update(patch).eq('id', id)
+    return !error
+  } catch { return false }
+}
+
+/** Attach a signed NDA file to a buyer's record (for NDAs completed outside
+ * the platform — email/paper — so there's a document on file, downloadable
+ * later). Stored in the private financial_docs bucket; marks the NDA signed
+ * since uploading proof of one implies it happened. */
+export async function uploadBuyerNda(buyerId: string, file: File): Promise<boolean> {
+  try {
+    const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const path = `buyer-ndas/${buyerId}/${Date.now()}-${safe}`
+    const { error: upErr } = await supabase.storage
+      .from(FF_BUCKET)
+      .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type })
+    if (upErr) return false
+    const { error } = await supabase.from('buyer_lists').update({
+      nda_document_path: path,
+      nda_document_name: file.name,
+      nda_document_uploaded_at: new Date().toISOString(),
+      nda_signed: true,
+      nda_signed_at: new Date().toISOString(),
+    }).eq('id', buyerId)
+    return !error
+  } catch { return false }
+}
+
+/** Promote a real, timestamped NDA-signed buyer inquiry (listing_nda_signatures,
+ * via lib/buyerInquiries.ts) into the manual buyer_lists roster, so they
+ * become selectable in Step 10's "Select buyer" dropdown. Fixes the gap
+ * where a buyer who signed the NDA on the public listing page never showed
+ * up there unless the broker separately re-typed them into "Add a buyer". */
+export async function promoteInquiryToBuyer(listingId: string, inquiry: { buyer_name: string; buyer_email: string; buyer_phone?: string | null; signed_at?: string | null }): Promise<boolean> {
+  try {
+    const { error } = await supabase.from('buyer_lists').insert({
+      listing_id: listingId,
+      buyer_name: inquiry.buyer_name,
+      buyer_email: inquiry.buyer_email,
+      buyer_phone: inquiry.buyer_phone || null,
+      buyer_type: 'individual',
+      nda_signed: true,
+      nda_signed_at: inquiry.signed_at || new Date().toISOString(),
+    })
     return !error
   } catch { return false }
 }
