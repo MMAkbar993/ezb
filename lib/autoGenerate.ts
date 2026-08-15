@@ -211,6 +211,36 @@ export async function getRecastPreview(listingId: string): Promise<{ ok: boolean
   return { ok: true, businessName: L.business_name || '', history }
 }
 
+// ---------------------------------------------------------------------------
+// Resolve the preparing agent's display name + brokerage name for BOV/CIM
+// attribution. Prefers the agent's own public profile (broker_profiles),
+// falls back to their account name; brokerage comes from broker_profiles'
+// agency link. Never throws — a listing with no agent, or an agent with no
+// profile/agency set up yet, just gets undefined (export functions fall
+// back to today's defaults).
+// ---------------------------------------------------------------------------
+async function resolvePreparedBy(
+  supabase: NonNullable<ReturnType<typeof createServerClient>>,
+  agentId: string | null,
+): Promise<{ preparedByName?: string; preparedByBrokerage?: string }> {
+  if (!agentId) return {}
+  try {
+    const [{ data: profile }, { data: brokerProfile }] = await Promise.all([
+      supabase.from('profiles').select('full_name').eq('id', agentId).maybeSingle(),
+      supabase.from('broker_profiles').select('public_name, agency_id').eq('profile_id', agentId).maybeSingle(),
+    ])
+    const preparedByName = brokerProfile?.public_name || profile?.full_name || undefined
+    let preparedByBrokerage: string | undefined
+    if (brokerProfile?.agency_id) {
+      const { data: agency } = await supabase.from('agencies').select('name').eq('id', brokerProfile.agency_id).maybeSingle()
+      preparedByBrokerage = agency?.name || undefined
+    }
+    return { preparedByName, preparedByBrokerage }
+  } catch {
+    return {}
+  }
+}
+
 export async function runAutoGeneration(input: {
   listingId: string
   dealId?: string | null
@@ -233,6 +263,12 @@ export async function runAutoGeneration(input: {
   const dealId = input.dealId ?? null
   const artifacts: GeneratedArtifact[] = []
   const notes: string[] = []
+
+  // 1b) Resolve who's preparing this document — "Prepared by [Agent] —
+  //     [Brokerage]" on the BOV/CIM cover/footer. Falls back to the current
+  //     defaults (handled by the export functions themselves) when the
+  //     listing has no agent, or the agent has no public profile/agency yet.
+  const attribution = await resolvePreparedBy(supabase, L.agent_id)
 
   // 2) Load existing source financial docs for this listing. `deal_id` is a
   //    uuid column — only add the deal_id.eq clause when we actually have one
@@ -306,7 +342,7 @@ export async function runAutoGeneration(input: {
 
   // 6) BOV
   try {
-    const bov = generateBovContent(L2)
+    const bov = generateBovContent(L2, attribution)
     const bytes = exportBovToPdf(bov, { returnBytes: true })
     if (bytes) {
       const art = await saveGeneratedDoc({
@@ -325,7 +361,7 @@ export async function runAutoGeneration(input: {
 
   // 7) CIM
   try {
-    const cim = generateCimContent(L2)
+    const cim = generateCimContent(L2, attribution)
     const bytes = exportCimToPdf(cim, { returnBytes: true })
     if (bytes) {
       const art = await saveGeneratedDoc({

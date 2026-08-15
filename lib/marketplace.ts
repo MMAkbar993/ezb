@@ -23,6 +23,7 @@ export interface PublicListing {
   business_name: string | null
   headline: string | null
   industry: string | null
+  business_type: string | null
   location_general: string | null
   description: string | null
   reason_for_sale: string | null
@@ -67,6 +68,7 @@ export interface MarketplaceStats {
 export interface SearchFilters {
   query?: string
   industry?: string
+  businessType?: string
   location?: string
   minPrice?: number
   maxPrice?: number
@@ -96,6 +98,7 @@ export async function searchPublicListings(filters: SearchFilters = {}): Promise
   let query = supabase.from(FEED).select('*')
 
   if (filters.industry) query = query.eq('industry', filters.industry)
+  if (filters.businessType) query = query.eq('business_type', filters.businessType)
   if (filters.location) query = query.ilike('location_general', `%${filters.location}%`)
   if (filters.minPrice) query = query.gte('asking_price', filters.minPrice)
   if (filters.maxPrice) query = query.lte('asking_price', filters.maxPrice)
@@ -129,6 +132,14 @@ export async function fetchListingById(id: string): Promise<PublicListing | null
   const { data, error } = await supabase.from(FEED).select('*').eq('id', id).maybeSingle()
   if (error || !data) return null
   return data as PublicListing
+}
+
+export async function fetchAllBusinessTypes(): Promise<string[]> {
+  const supabase = await getClient()
+  const { data, error } = await supabase.from(FEED).select('business_type')
+  if (error || !data) return []
+  const unique = new Set((data as any[]).map((l) => l.business_type).filter(Boolean))
+  return Array.from(unique).sort() as string[]
 }
 
 export async function fetchAllIndustries(): Promise<string[]> {
@@ -223,6 +234,24 @@ export async function fetchBrokerByProfileId(profileId: string): Promise<PublicB
     linkedin: b.linkedin || '',
     agency: b.agency,
   }
+}
+
+// An agency's combined listing portfolio — every listing belonging to any
+// broker in that agency. Two-step lookup (broker_profiles -> feed) since the
+// feed's broker_id is a profile id, not an agency id; there's no direct
+// agency_id column on public_listing_feed.
+export async function fetchListingsByAgency(agencyId: string): Promise<PublicListing[]> {
+  const supabase = await getClient()
+  const { data: members } = await supabase.from('broker_profiles').select('profile_id').eq('agency_id', agencyId)
+  const profileIds = (members || []).map((m: any) => m.profile_id).filter(Boolean)
+  if (profileIds.length === 0) return []
+  const { data, error } = await supabase
+    .from(FEED)
+    .select('*')
+    .in('broker_id', profileIds)
+    .order('created_at', { ascending: false })
+  if (error || !data) return []
+  return data as PublicListing[]
 }
 
 // A broker's active, published listing portfolio (BizBuySell-style profile

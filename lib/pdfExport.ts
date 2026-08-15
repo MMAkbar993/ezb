@@ -54,7 +54,12 @@ export function exportCimToPdf(content: CimContent, opts?: { returnBytes?: boole
 
   doc.setFontSize(10)
   y += 18
-  doc.text('CONCORD DEAL PLATFORM', M, y)
+  doc.text(
+    content.preparedByName
+      ? `Prepared by ${content.preparedByName}${content.preparedByBrokerage ? ' — ' + content.preparedByBrokerage : ''}`
+      : 'CONCORD DEAL PLATFORM',
+    M, y
+  )
 
   doc.addPage()
 
@@ -134,6 +139,17 @@ export function exportCimToPdf(content: CimContent, opts?: { returnBytes?: boole
     dy += 15
   }
 
+  if (content.preparedByName) {
+    dy += 20
+    doc.setFont('times', 'italic')
+    doc.setFontSize(9.5)
+    doc.setTextColor(...GOLD_DARK)
+    doc.text(
+      `Prepared by ${content.preparedByName}${content.preparedByBrokerage ? ' — ' + content.preparedByBrokerage : ''}`,
+      M, dy
+    )
+  }
+
   if (opts?.returnBytes) {
     return new Uint8Array(doc.output('arraybuffer'))
   }
@@ -145,7 +161,7 @@ const H = 842 // A4 height (pt)
 
 // Draws the navy/gold section header band + the confidentiality footer notice
 // on the current page. Call after addPage() or at page start.
-function startBovPage(doc: any, sectionTitle: string, footer = true): void {
+function startBovPage(doc: any, sectionTitle: string, footer = true, preparedBy?: string): void {
   const W = doc.internal.pageSize.getWidth()
   doc.setFillColor(255, 255, 255)
   doc.rect(0, 0, W, H, 'F')
@@ -171,6 +187,10 @@ function startBovPage(doc: any, sectionTitle: string, footer = true): void {
       doc.text(lines[i], 56, fy)
       fy -= 10
     }
+    if (preparedBy) {
+      doc.text(preparedBy, 56, fy)
+      fy -= 10
+    }
     doc.setDrawColor(...GOLD)
     doc.setLineWidth(0.7)
     doc.line(56, H - 42, W - 56, H - 42)
@@ -181,6 +201,9 @@ export function exportBovToPdf(content: BovContent, opts?: { returnBytes?: boole
   const doc = new jsPDF({ unit: 'pt', format: 'a4' })
   const W = doc.internal.pageSize.getWidth()
   const M = 56
+  const preparedByLine = content.preparedByName
+    ? `Prepared by ${content.preparedByName}${content.preparedByBrokerage ? ' — ' + content.preparedByBrokerage : ''}`
+    : undefined
 
   // ---- Cover page ----
   doc.setFillColor(...NAVY)
@@ -199,7 +222,7 @@ export function exportBovToPdf(content: BovContent, opts?: { returnBytes?: boole
   doc.text(content.businessName, W / 2, H * 0.5 + 40, { align: 'center' })
   doc.setFontSize(11)
   doc.setTextColor(...GOLD)
-  doc.text('Prepared by Concord Deal Platform', W / 2, H * 0.5 + 66, { align: 'center' })
+  doc.text(preparedByLine || 'Prepared by Concord Deal Platform', W / 2, H * 0.5 + 66, { align: 'center' })
   doc.setFontSize(10)
   doc.setTextColor(200, 200, 200)
   doc.text(`Prepared: ${content.generatedAt}  ·  For: ${content.preparedFor}`, W / 2, H * 0.5 + 86, { align: 'center' })
@@ -209,7 +232,7 @@ export function exportBovToPdf(content: BovContent, opts?: { returnBytes?: boole
 
   // ---- Table of contents ----
   doc.addPage()
-  startBovPage(doc, 'Table of Contents')
+  startBovPage(doc, 'Table of Contents', true, preparedByLine)
   doc.setTextColor(...NAVY)
   doc.setFont('times', 'bold')
   doc.setFontSize(16)
@@ -225,12 +248,12 @@ export function exportBovToPdf(content: BovContent, opts?: { returnBytes?: boole
     doc.setTextColor(...NAVY)
     doc.text(`${i + 1}.  ${t}`, M, ty)
     ty += 28
-    if (ty > H - 80) { doc.addPage(); startBovPage(doc, 'Table of Contents'); ty = 100 }
+    if (ty > H - 80) { doc.addPage(); startBovPage(doc, 'Table of Contents', true, preparedByLine); ty = 100 }
   })
 
   // ---- Valuation summary snapshot page ----
   doc.addPage()
-  startBovPage(doc, 'Valuation Summary')
+  startBovPage(doc, 'Valuation Summary', true, preparedByLine)
   let y = 140
   doc.setTextColor(...NAVY)
   doc.setFont('times', 'bold')
@@ -267,7 +290,7 @@ export function exportBovToPdf(content: BovContent, opts?: { returnBytes?: boole
   // ---- Full sections (each starts on a new page, auto-paginates) ----
   for (const section of content.sections) {
     doc.addPage()
-    startBovPage(doc, section.title)
+    startBovPage(doc, section.title, true, preparedByLine)
     let sy = 130
     doc.setTextColor(...NAVY)
     doc.setFont('times', 'bold')
@@ -293,7 +316,7 @@ export function exportBovToPdf(content: BovContent, opts?: { returnBytes?: boole
       for (const line of sub.body) {
         const wrapped = doc.splitTextToSize(line, W - M * 2) as string[]
         for (const w of wrapped) {
-          if (sy > H - 70) { doc.addPage(); startBovPage(doc, section.title); sy = 90 }
+          if (sy > H - 70) { doc.addPage(); startBovPage(doc, section.title, true, preparedByLine); sy = 90 }
           doc.text(w, M, sy)
           sy += 16
         }
@@ -316,7 +339,7 @@ export function exportBovToPdf(content: BovContent, opts?: { returnBytes?: boole
       for (const a of content.assumptions) {
         const lines = doc.splitTextToSize('•  ' + a, W - M * 2) as string[]
         for (const l of lines) {
-          if (sy > H - 70) { doc.addPage(); startBovPage(doc, section.title); sy = 90 }
+          if (sy > H - 70) { doc.addPage(); startBovPage(doc, section.title, true, preparedByLine); sy = 90 }
           doc.text(l, M, sy)
           sy += 15
         }
@@ -326,7 +349,7 @@ export function exportBovToPdf(content: BovContent, opts?: { returnBytes?: boole
 
   // ---- Comparable transactions page ----
   doc.addPage()
-  startBovPage(doc, 'Comparable Transactions')
+  startBovPage(doc, 'Comparable Transactions', true, preparedByLine)
   let cy = 140
   doc.setTextColor(...NAVY)
   doc.setFont('times', 'bold')
@@ -353,7 +376,7 @@ export function exportBovToPdf(content: BovContent, opts?: { returnBytes?: boole
     const vals = [c.business, c.industry, c.location, fmt(c.price), fmt(c.revenue), c.multiple ? c.multiple.toFixed(2) + 'x' : 'N/A']
     for (let i = 0; i < vals.length; i++) doc.text(vals[i], colX[i], cy)
     cy += 20
-    if (cy > H - 70) { doc.addPage(); startBovPage(doc, 'Comparable Transactions'); cy = 90 }
+    if (cy > H - 70) { doc.addPage(); startBovPage(doc, 'Comparable Transactions', true, preparedByLine); cy = 90 }
   }
 
   // ---- Final confidentiality / disclaimer page ----

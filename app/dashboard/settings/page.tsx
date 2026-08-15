@@ -2,6 +2,7 @@
 
 import AppShell from '@/components/layout/AppShell'
 import EmailSettings from '@/components/settings/EmailSettings'
+import MyProfile from '@/components/settings/MyProfile'
 import LicenseSettings from '@/components/settings/LicenseSettings'
 import TeamManagement from '@/components/settings/TeamManagement'
 import BusinessCardBrandSettings from '@/components/cards/BusinessCardBrandSettings'
@@ -25,6 +26,7 @@ export default function SettingsPage() {
           <TeamManagement />
           <EmailSettings />
           <div style={{ height: 24 }} />
+          <MyProfile />
           <LicenseSettings />
           <div style={{ height: 24 }} />
           <AgencyBrandAdmin />

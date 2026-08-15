@@ -27,15 +27,27 @@ const INDUSTRY_MULTIPLES: Record<string, MultipleRange> = {
   dental: { low: 4.5, high: 6.5 },
   itservices: { low: 3.5, high: 5.5 },
   technology: { low: 3.5, high: 5.5 },
+  // Blueprint-sourced (client-provided industry heuristics, 2026-08-15):
+  // "Technology / SaaS: 4.0x-8.0x+ EBITDA" — kept distinct from the more
+  // conservative general itservices/technology entries above, since a
+  // recurring-revenue SaaS business commands a real premium over a general
+  // IT shop.
+  saas: { low: 4.0, high: 8.0 },
+  softwareasaservice: { low: 4.0, high: 8.0 },
   softwareit: { low: 4.0, high: 6.5 },
-  businessservices: { low: 2.5, high: 4.0 },
+  businessservices: { low: 2.0, high: 3.5 },
+  // Blueprint: "B2B Services: 2.0x-3.5x SDE"
+  b2bservices: { low: 2.0, high: 3.5 },
   professionalservices: { low: 2.5, high: 4.0 },
   accounting: { low: 2.5, high: 4.0 },
-  restaurant: { low: 1.5, high: 2.75 },
-  foodbeverage: { low: 1.5, high: 2.75 },
+  // Blueprint: "Food & Beverage / Restaurants: 1.5x-2.5x SDE"
+  restaurant: { low: 1.5, high: 2.5 },
+  foodbeverage: { low: 1.5, high: 2.5 },
   retail: { low: 2.0, high: 3.0 },
   ecommerce: { low: 3.0, high: 4.5 },
+  // Blueprint: "Light Manufacturing & Distribution: 3.0x-5.0x EBITDA"
   manufacturing: { low: 3.0, high: 5.0 },
+  distributionwholesale: { low: 3.0, high: 5.0 },
   construction: { low: 2.5, high: 4.0 },
   hvac: { low: 3.0, high: 4.5 },
   landscaping: { low: 2.5, high: 4.0 },
@@ -48,7 +60,13 @@ const INDUSTRY_MULTIPLES: Record<string, MultipleRange> = {
   salonbeauty: { low: 2.0, high: 3.0 },
   realestateservices: { low: 2.5, high: 4.0 },
   insurance: { low: 3.5, high: 5.5 },
-  distributionwholesale: { low: 2.5, high: 4.0 },
+  // Blueprint: "Gas Stations / Convenience: 2.0x-3.0x SDE / up to 3.0x EBITDA"
+  gasstation: { low: 2.0, high: 3.0 },
+  convenience: { low: 2.0, high: 3.0 },
+  gasstationconvenience: { low: 2.0, high: 3.0 },
+  // Blueprint: "Liquor Stores: 2.5x-4.0x SDE"
+  liquorstore: { low: 2.5, high: 4.0 },
+  liquorstores: { low: 2.5, high: 4.0 },
 }
 
 function normalizeKey(s: string): string {

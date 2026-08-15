@@ -31,6 +31,8 @@ export interface BovContent {
   businessName: string
   generatedAt: string
   preparedFor: string
+  preparedByName?: string
+  preparedByBrokerage?: string
   askingPrice: number | null
   revenue: number | null
   sde: number | null
@@ -138,7 +140,7 @@ const guard = (n: number | null | undefined, fallback = 0): number =>
 
 const pct = (n: number) => `${(n * 100).toFixed(1)}%`
 
-export function generateBovContent(listing: Listing): BovContent {
+export function generateBovContent(listing: Listing, attribution?: { preparedByName?: string; preparedByBrokerage?: string }): BovContent {
   const now = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
   const price = guard(listing.asking_price)
   const revenue = guard(listing.annual_revenue)
@@ -494,6 +496,8 @@ export function generateBovContent(listing: Listing): BovContent {
     businessName: name,
     generatedAt: now,
     preparedFor: 'Confidential Prospective Buyer',
+    preparedByName: attribution?.preparedByName,
+    preparedByBrokerage: attribution?.preparedByBrokerage,
     askingPrice: price,
     revenue,
     sde,

@@ -17,6 +17,8 @@ export interface CimContent {
   subtitle: string
   generatedAt: string
   confidential: boolean
+  preparedByName?: string
+  preparedByBrokerage?: string
   sections: CimSection[]
 }
 
@@ -41,7 +43,7 @@ const pct = (n: number | null | undefined): string =>
 // ---------------------------------------------------------------------------
 // Generate a print-ready, 25+ section CIM from listing data
 // ---------------------------------------------------------------------------
-export function generateCimContent(listing: Listing): CimContent {
+export function generateCimContent(listing: Listing, attribution?: { preparedByName?: string; preparedByBrokerage?: string }): CimContent {
   const now = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
   const price = listing.asking_price
   const revenue = listing.annual_revenue
@@ -356,6 +358,8 @@ export function generateCimContent(listing: Listing): CimContent {
     subtitle: listing.headline || 'Confidential Information Memorandum',
     generatedAt: now,
     confidential: true,
+    preparedByName: attribution?.preparedByName,
+    preparedByBrokerage: attribution?.preparedByBrokerage,
     sections,
   }
 }

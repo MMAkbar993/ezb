@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Agency, fetchAgencies } from '@/lib/agencies'
-import { fetchFeaturedListings, PublicListing } from '@/lib/marketplace'
+import { fetchListingsByAgency, PublicListing } from '@/lib/marketplace'
 import PublicListingCard from '@/components/public/PublicListingCard'
 import { LoadingState } from '@/components/ui'
 
@@ -19,7 +19,7 @@ export default function AgencyHomePage({ params }: { params: { slug: string } })
         const agencies = await fetchAgencies()
         const found = agencies.find((a) => a.slug === params.slug)
         setAgency(found || null)
-        setListings(await fetchFeaturedListings(6))
+        setListings(found ? await fetchListingsByAgency(found.id) : [])
       } catch { setAgency(null) } finally { setLoading(false) }
     })()
   }, [params.slug])
