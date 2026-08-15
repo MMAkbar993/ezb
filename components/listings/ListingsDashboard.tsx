@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Listing, fetchListings, createListing, updateListing, deleteListing, fmtMoney, LISTING_STATUSES } from '@/lib/listings'
+import { Listing, fetchListings, createListing, updateListing, deleteListing, duplicateListing, fmtMoney, LISTING_STATUSES } from '@/lib/listings'
 import { useToast } from '@/components/ui/Toast'
 import { LoadingState, EmptyState, Card } from '@/components/ui'
 import ListingFormModal from './ListingFormModal'
@@ -87,6 +87,16 @@ export default function ListingsDashboard() {
     try {
       await deleteListing(listing.id)
       toast('Listing deleted', 'success')
+      await load()
+    } catch (e: any) {
+      toast(e.message, 'error')
+    }
+  }
+
+  const handleDuplicate = async (listing: Listing) => {
+    try {
+      await duplicateListing(listing.id)
+      toast('Listing duplicated', 'success')
       await load()
     } catch (e: any) {
       toast(e.message, 'error')
@@ -188,6 +198,7 @@ export default function ListingsDashboard() {
                   <Link href={`/cim?listing=${listing.id}`} className="btn btn-navy" style={{ flex: 1, justifyContent: 'center', padding: '8px 10px', fontSize: 13 }}>📑 CIM</Link>
                   <Link href={`/bov?listing=${listing.id}`} className="btn btn-navy" style={{ flex: 1, justifyContent: 'center', padding: '8px 10px', fontSize: 13 }}>⚖️ BOV</Link>
                   <button className="btn btn-ghost" onClick={() => { setEditing(listing); setShowForm(true) }}>✎</button>
+                  <button className="btn btn-ghost" title="Duplicate listing" onClick={() => handleDuplicate(listing)}>⧉</button>
                   <button className="btn btn-danger" onClick={() => handleDelete(listing)}>🗑</button>
                 </div>
 

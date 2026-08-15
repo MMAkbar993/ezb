@@ -104,6 +104,28 @@ export async function fetchListing(id: string): Promise<Listing | null> {
   return (data as Listing) || null
 }
 
+/** Clone a listing into a new draft — keeps every business/financial/
+ * operational/real-estate field, but starts fresh: new id, draft status, no
+ * photos (a duplicate shouldn't inherit the original's storefront images),
+ * and " (Copy)" appended to the name so it's visually distinguishable in the
+ * list. agent_id is re-stamped to the current session automatically by
+ * createListing() below, same as any other new listing. */
+export async function duplicateListing(id: string): Promise<Listing> {
+  const source = await fetchListing(id)
+  if (!source) throw new Error('Listing not found')
+  // total_value is a Postgres GENERATED column (computed from asking_price +
+  // property_value) — inserting an explicit value into it errors (428C9).
+  const { id: _id, created_at: _createdAt, updated_at: _updatedAt, agent_id: _agentId, total_value: _totalValue, ...rest } = source
+  return createListing({
+    ...rest,
+    business_name: `${source.business_name || 'Untitled'} (Copy)`,
+    status: 'draft',
+    image_urls: null,
+    primary_image_url: null,
+    featured_image_url: null,
+  })
+}
+
 export async function createListing(input: ListingInput): Promise<Listing> {
   // listings.agent_id is NOT NULL — always stamp it with the authenticated
   // user's id (auth.uid() at the DB layer maps to the JWT subject). This

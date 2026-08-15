@@ -5,6 +5,7 @@ import { StepShell, stepField, stepLabel, stepBtn } from '@/components/listings/
 import { getAgreement, recordLOI, recordPurchaseAgreement, recordClosing, fetchClosingDetails, completeStep, fetchBuyers } from '@/lib/workflow'
 import { fetchListing } from '@/lib/listings'
 import StatusBadge from '@/components/listings/StatusBadge'
+import ClosingChecklist from '@/components/listings/ClosingChecklist'
 
 // ---------------------------------------------------------------------------
 // Step 10 — Deal Closing: LOI → Purchase Agreement → Closing.
@@ -69,6 +70,8 @@ export default function Step10DealClosing({ listingId, onNext }: { listingId: st
           {agreement?.buyer_id && !buyers.some((b) => b.id === agreement.buyer_id) && <option value={agreement.buyer_id}>Current buyer</option>}
         </select>
       </label>
+
+      <ClosingChecklist listingId={listingId} />
 
       {stage === 'closing' && (
         <div className="grid-2" style={{ gap: 14, marginBottom: 14 }}>

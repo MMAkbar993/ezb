@@ -310,6 +310,29 @@ export async function uploadBuyerNda(buyerId: string, file: File): Promise<boole
   } catch { return false }
 }
 
+/** Upload a buyer's Proof of Funds document (bank letter, brokerage
+ * statement, etc.) — same private-bucket + signed-URL pattern as
+ * uploadBuyerNda above. Marks financial_proof_uploaded, but leaves
+ * financial_qualified untouched — that stays the broker's own judgment call
+ * after actually reviewing the document. */
+export async function uploadBuyerPof(buyerId: string, file: File): Promise<boolean> {
+  try {
+    const safe = file.name.replace(/[^a-zA-Z0-9._-]/g, '_')
+    const path = `buyer-pof/${buyerId}/${Date.now()}-${safe}`
+    const { error: upErr } = await supabase.storage
+      .from(FF_BUCKET)
+      .upload(path, file, { cacheControl: '3600', upsert: false, contentType: file.type })
+    if (upErr) return false
+    const { error } = await supabase.from('buyer_lists').update({
+      pof_document_path: path,
+      pof_document_name: file.name,
+      pof_document_uploaded_at: new Date().toISOString(),
+      financial_proof_uploaded: true,
+    }).eq('id', buyerId)
+    return !error
+  } catch { return false }
+}
+
 /** Promote a real, timestamped NDA-signed buyer inquiry (listing_nda_signatures,
  * via lib/buyerInquiries.ts) into the manual buyer_lists roster, so they
  * become selectable in Step 10's "Select buyer" dropdown. Fixes the gap

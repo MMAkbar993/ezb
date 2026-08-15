@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { StepShell, stepField, stepLabel, stepBtn } from '@/components/listings/StepShell'
-import { fetchBuyers, addBuyer, updateBuyer, completeStep, recordLOI, uploadBuyerNda } from '@/lib/workflow'
+import { fetchBuyers, addBuyer, updateBuyer, completeStep, recordLOI, uploadBuyerNda, uploadBuyerPof } from '@/lib/workflow'
 import { getSignedFileUrl } from '@/lib/financialFiles'
 import StatusBadge from '@/components/listings/StatusBadge'
 import BuyerInquiriesList from '@/components/listings/BuyerInquiriesList'
@@ -88,6 +88,22 @@ export default function Step9BuyerManagement({ listingId, onNext, onAgreementCha
     else toast('Could not open NDA document', 'error')
   }
 
+  const [uploadingPofFor, setUploadingPofFor] = useState<string | null>(null)
+
+  const handlePofUpload = async (buyer: any, file: File) => {
+    setUploadingPofFor(buyer.id)
+    const ok = await uploadBuyerPof(buyer.id, file)
+    setUploadingPofFor(null)
+    if (ok) { toast(`Proof of Funds saved for ${buyer.buyer_name}`, 'success'); await load() }
+    else toast('Failed to upload Proof of Funds', 'error')
+  }
+
+  const viewPof = async (buyer: any) => {
+    const url = await getSignedFileUrl(buyer.pof_document_path)
+    if (url) window.open(url, '_blank', 'noreferrer')
+    else toast('Could not open Proof of Funds document', 'error')
+  }
+
   return (
     <StepShell step={9} title="Buyer Management" description="Track interested buyers through NDA and financial qualification. Set a primary buyer; when they sign an LOI the listing advances to Pending Sale."
       status="draft" onNext={async () => { await completeStep(listingId, 9); onNext() }} nextLabel="Step 9 complete →">
@@ -143,6 +159,20 @@ export default function Step9BuyerManagement({ listingId, onNext, onAgreementCha
                 />
               </label>
             )}
+            {b.pof_document_path ? (
+              <button onClick={() => viewPof(b)} style={chipBtn('#0f3460')}>💰 View Proof of Funds</button>
+            ) : (
+              <label style={{ ...chipBtn('#7a7a8a'), display: 'inline-flex', alignItems: 'center' }}>
+                {uploadingPofFor === b.id ? 'Uploading…' : '📎 Upload Proof of Funds'}
+                <input
+                  type="file"
+                  accept=".pdf,.png,.jpg,.jpeg"
+                  disabled={uploadingPofFor === b.id}
+                  style={{ display: 'none' }}
+                  onChange={(e) => { const f = e.target.files?.[0]; if (f) handlePofUpload(b, f); e.target.value = '' }}
+                />
+              </label>
+            )}
             <button onClick={() => updateBuyer(b.id, { financial_qualified: !b.financial_qualified }).then(load)} style={chipBtn(b.financial_qualified ? '#16a34a' : '#7a7a8a')}>
               {b.financial_qualified ? '✓ Financially qualified' : 'Mark financially qualified'}
             </button>
@@ -160,6 +190,31 @@ export default function Step9BuyerManagement({ listingId, onNext, onAgreementCha
           {b.nda_document_path && (
             <div style={{ marginTop: 8, fontSize: 11.5, color: 'var(--muted)' }}>
               📎 {b.nda_document_name || 'NDA document'} on file{b.nda_document_uploaded_at ? ` · uploaded ${new Date(b.nda_document_uploaded_at).toLocaleDateString()}` : ''}
+            </div>
+          )}
+          {b.pof_document_path && (
+            <div style={{ marginTop: 8 }}>
+              <div style={{ fontSize: 11.5, color: 'var(--muted)', marginBottom: 6 }}>
+                💰 {b.pof_document_name || 'Proof of Funds document'} on file{b.pof_document_uploaded_at ? ` · uploaded ${new Date(b.pof_document_uploaded_at).toLocaleDateString()}` : ''}
+              </div>
+              <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11.5, color: 'var(--muted)' }}>
+                  Verified Amount ($)
+                  <input
+                    type="number" defaultValue={b.pof_verified_amount ?? ''}
+                    onBlur={(e) => updateBuyer(b.id, { pof_verified_amount: e.target.value ? Number(e.target.value) : null }).then(load)}
+                    style={{ ...stepField, width: 140, padding: '6px 8px', fontSize: 12.5 }}
+                  />
+                </label>
+                <label style={{ display: 'flex', flexDirection: 'column', gap: 3, fontSize: 11.5, color: 'var(--muted)' }}>
+                  Expiry Date
+                  <input
+                    type="date" defaultValue={b.pof_expiry_date ?? ''}
+                    onBlur={(e) => updateBuyer(b.id, { pof_expiry_date: e.target.value || null }).then(load)}
+                    style={{ ...stepField, width: 150, padding: '6px 8px', fontSize: 12.5 }}
+                  />
+                </label>
+              </div>
             </div>
           )}
           {b.is_primary_buyer && (
