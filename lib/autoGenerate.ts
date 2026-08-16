@@ -286,6 +286,26 @@ export async function runAutoGeneration(input: {
   const sources = ((sourceDocs as FinancialDoc[] | null) || []).filter((d) => d.category !== 'generated_document')
   const grouped = groupUploadedDocs(sources)
 
+  // ROOT-CAUSE FIX: previously, generation always proceeded even with zero
+  // uploaded documents AND zero manually-entered figures — buildFinancialHistory
+  // (financialExtractor.ts) and bov.ts's buildHistory would both fabricate a
+  // full 3-4 year revenue/SDE/EBITDA trend from nothing, and generation would
+  // "succeed" with entirely invented numbers. Hard-stop here instead: if there
+  // is no real source (no uploaded financial documents and no manually
+  // entered revenue/SDE/EBITDA on the listing), refuse to generate rather
+  // than inventing figures.
+  const hasManualFigures = !!(L.annual_revenue || L.sde || L.ebitda)
+  if (sources.length === 0 && !hasManualFigures) {
+    return {
+      ok: false,
+      listingId: input.listingId,
+      listingName: L.business_name || '',
+      error: 'No financial data available for this listing. Upload financial documents (tax returns, P&L, bank statements) or enter Revenue/SDE/EBITDA on the listing before generating Recast/BOV/CIM/BLI.',
+      artifacts: [],
+      notes: ['Generation was not attempted — no uploaded financial documents and no manually entered financial figures were found.'],
+    }
+  }
+
   // 3) Extract financial data from the actual content of every uploaded
   //    source document (P&L, balance sheet, tax return, bank statements),
   //    combined into one figure set.

@@ -172,28 +172,34 @@ export default function BovGenerator() {
                 {/* Comparable transactions */}
                 <div className="section-title" style={{ marginTop: 34 }}>Comparable Transactions</div>
                 <hr className="divider-gold" />
-                <div style={{ width: '100%', overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
-                    <thead>
-                      <tr style={{ background: 'var(--navy)', color: 'var(--gold-light)', textAlign: 'left' }}>
-                        {['Business', 'Location', 'Price', 'Revenue', 'Multiple'].map((h) => (
-                          <th key={h} style={{ padding: '9px 12px', fontWeight: 700 }}>{h}</th>
-                        ))}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {content.comparables.map((c, i) => (
-                        <tr key={i} style={{ borderBottom: '1px solid #f0ecdf' }}>
-                          <td style={{ padding: '9px 12px', fontWeight: 600 }}>{c.business}</td>
-                          <td style={{ padding: '9px 12px' }}>{c.location}</td>
-                          <td style={{ padding: '9px 12px' }}>{fmt(c.price)}</td>
-                          <td style={{ padding: '9px 12px' }}>{fmt(c.revenue)}</td>
-                          <td style={{ padding: '9px 12px', fontWeight: 700, color: 'var(--gold-dark)' }}>{c.multiple ? c.multiple.toFixed(2) + 'x' : '—'}</td>
+                {content.comparables.length === 0 ? (
+                  <p style={{ fontSize: 13.5, color: 'var(--muted)', fontStyle: 'italic' }}>
+                    No comparable transaction data source is connected yet — this section is intentionally left blank rather than showing invented figures.
+                  </p>
+                ) : (
+                  <div style={{ width: '100%', overflowX: 'auto' }}>
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                      <thead>
+                        <tr style={{ background: 'var(--navy)', color: 'var(--gold-light)', textAlign: 'left' }}>
+                          {['Business', 'Location', 'Price', 'Revenue', 'Multiple'].map((h) => (
+                            <th key={h} style={{ padding: '9px 12px', fontWeight: 700 }}>{h}</th>
+                          ))}
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {content.comparables.map((c, i) => (
+                          <tr key={i} style={{ borderBottom: '1px solid #f0ecdf' }}>
+                            <td style={{ padding: '9px 12px', fontWeight: 600 }}>{c.business}</td>
+                            <td style={{ padding: '9px 12px' }}>{c.location}</td>
+                            <td style={{ padding: '9px 12px' }}>{fmt(c.price)}</td>
+                            <td style={{ padding: '9px 12px' }}>{fmt(c.revenue)}</td>
+                            <td style={{ padding: '9px 12px', fontWeight: 700, color: 'var(--gold-dark)' }}>{c.multiple ? c.multiple.toFixed(2) + 'x' : '—'}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
 
                 {/* Assumptions */}
                 <div className="section-title" style={{ marginTop: 34 }}>Assumptions & Methodology</div>

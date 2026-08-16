@@ -372,6 +372,11 @@ export function exportBovToPdf(content: BovContent, opts?: { returnBytes?: boole
   doc.setTextColor(...TEXT)
   doc.setFont('times', 'normal')
   doc.setFontSize(10)
+  if (content.comparables.length === 0) {
+    doc.setFont('times', 'italic')
+    doc.text('No comparable transaction data source is connected yet.', M, cy)
+    doc.setFont('times', 'normal')
+  }
   for (const c of content.comparables) {
     const vals = [c.business, c.industry, c.location, fmt(c.price), fmt(c.revenue), c.multiple ? c.multiple.toFixed(2) + 'x' : 'N/A']
     for (let i = 0; i < vals.length; i++) doc.text(vals[i], colX[i], cy)

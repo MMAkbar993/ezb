@@ -168,10 +168,16 @@ export function extractFinancialCsv(csvText: string, fallbackYear = new Date().g
 const HIST_LABELS = ['−2y', '−1y', 'current'] as const
 
 /**
- * Build a 3-year (plus current) financial history from a Listing. Where the
- * listing lacks multi-year detail we derive a conservative year-over-year
- * trajectory from the current year figures (safe, defensible defaults) and
- * fold in any extracted CSV rows that carry more precise numbers.
+ * Build a 3-year (plus current) financial history from a Listing. Years with
+ * a real extracted document row use that row's actual figures. Years with NO
+ * real source data (no extracted row for that year) use the listing's own
+ * reported current-year figures as-is — they are NOT scaled up/down to imply
+ * a growth or decline trend that was never reported by anyone. Previously
+ * this function applied an assumed year-over-year growth curve (0.94/0.92
+ * decay factors) to invent different revenue/SDE/EBITDA numbers for years
+ * with no real data at all — that fabrication has been removed; a year we
+ * have no real data for now shows the same real figure we do have, not a
+ * guessed different one.
  */
 export function buildFinancialHistory(
   listing: Listing,
@@ -195,16 +201,16 @@ export function buildFinancialHistory(
   const extractedByYear = new Map<number, ExtractedFinancialRow>()
   for (const r of extracted || []) extractedByYear.set(r.year, r)
 
-  // 3 prior years + current. Older years are scaled down to imply growth.
+  // 3 prior years + current. Years with no real extracted row for that year
+  // use the listing's own reported figures unchanged — no invented trend.
   const years: YearFinancials[] = []
   for (let i = 0; i < HIST_LABELS.length; i++) {
     const year = currentYear - (HIST_LABELS.length - 1 - i)
-    const growth = i + 1 // 1x, 2x, 3x closer to current
     const ex = extractedByYear.get(year)
 
-    const yrRevenue = ex?.revenue ?? Math.round((revenue / growth) * (i === HIST_LABELS.length - 1 ? 1 : 0.94))
-    const yrSDE = ex ? (extractedByYear.size && ex.revenue ? (sde / revenue) * (ex.revenue || yrRevenue) : sde) : Math.round((sde / growth) * (i === HIST_LABELS.length - 1 ? 1 : 0.92))
-    const yrEBITDA = ex ? Math.max(0, yrSDE - (ex.ownerComp ?? ownerComp)) : Math.round((ebitda / growth) * (i === HIST_LABELS.length - 1 ? 1 : 0.92))
+    const yrRevenue = ex?.revenue ?? revenue
+    const yrSDE = ex ? (extractedByYear.size && ex.revenue ? (sde / revenue) * (ex.revenue || yrRevenue) : sde) : sde
+    const yrEBITDA = ex ? Math.max(0, yrSDE - (ex.ownerComp ?? ownerComp)) : ebitda
 
     years.push({
       year,

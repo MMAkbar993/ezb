@@ -197,7 +197,12 @@ export default function ListingsDashboard() {
                 <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
                   <Link href={`/cim?listing=${listing.id}`} className="btn btn-navy" style={{ flex: 1, justifyContent: 'center', padding: '8px 10px', fontSize: 13 }}>📑 CIM</Link>
                   <Link href={`/bov?listing=${listing.id}`} className="btn btn-navy" style={{ flex: 1, justifyContent: 'center', padding: '8px 10px', fontSize: 13 }}>⚖️ BOV</Link>
-                  <button className="btn btn-ghost" onClick={() => { setEditing(listing); setShowForm(true) }}>✎</button>
+                  {/* Edit reopens the SAME guided workflow this listing was
+                      created in (same page "Continue Setup" uses above) —
+                      previously this opened a separate quick-edit popup
+                      instead, so clicking Edit never actually took you back
+                      into the listing's workflow/status controls. */}
+                  <Link href={`/dashboard/listings/${listing.id}/workflow`} className="btn btn-ghost" title="Edit listing">✎</Link>
                   <button className="btn btn-ghost" title="Duplicate listing" onClick={() => handleDuplicate(listing)}>⧉</button>
                   <button className="btn btn-danger" onClick={() => handleDelete(listing)}>🗑</button>
                 </div>

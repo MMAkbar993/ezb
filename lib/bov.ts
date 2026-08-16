@@ -50,47 +50,33 @@ export interface BovContent {
 }
 
 // ---------------------------------------------------------------------------
-// Realistic industry-guide comparables by industry (broker-grade estimates,
-// representative of the market segment in 2026.)
+// ROOT-CAUSE FIX: this file previously hardcoded a table of entirely
+// fictional "comparable" businesses (invented company names, cities, sale
+// prices, and revenue multiples) and presented them in the BOV as if they
+// were real market transaction data — regardless of whether any real
+// financial documents, or any real comparable-sales data source, existed
+// for the listing. No real comparable-sales integration (DealStats,
+// PeerComps, etc.) exists in this app, so there is no real data to show
+// here. Returning an empty list is the honest state: the BOV's Comparable
+// Transactions section now says so explicitly instead of inventing numbers.
 // ---------------------------------------------------------------------------
-const INDUSTRY_GUIDES: Record<string, Comparable[]> = {
-  'Business Services': [
-    { business: 'Advisory Firm A', industry: 'Business Services', location: 'Charlotte, NC', price: 2200000, revenue: 1400000, multiple: 1.57 },
-    { business: 'Consulting Group B', industry: 'Business Services', location: 'Atlanta, GA', price: 3100000, revenue: 1900000, multiple: 1.63 },
-    { business: 'Valuation Practice C', industry: 'Business Services', location: 'Nashville, TN', price: 1800000, revenue: 1100000, multiple: 1.64 },
-  ],
-  Manufacturing: [
-    { business: 'Precision Components LLC', industry: 'Manufacturing', location: 'Greenville, SC', price: 8600000, revenue: 5200000, multiple: 1.65 },
-    { business: 'Mid-State Fabrication', industry: 'Manufacturing', location: 'Greensboro, NC', price: 6400000, revenue: 4100000, multiple: 1.56 },
-    { business: 'Carolina Castings Co.', industry: 'Manufacturing', location: 'Columbia, SC', price: 11200000, revenue: 6900000, multiple: 1.62 },
-  ],
-  Healthcare: [
-    { business: 'Piedmont Home Health', industry: 'Healthcare', location: 'Raleigh, NC', price: 5200000, revenue: 3600000, multiple: 1.44 },
-    { business: 'Triangle Care Services', industry: 'Healthcare', location: 'Durham, NC', price: 4800000, revenue: 3300000, multiple: 1.45 },
-    { business: 'Coastal Senior Care', industry: 'Healthcare', location: 'Wilmington, NC', price: 6100000, revenue: 4200000, multiple: 1.45 },
-  ],
-  'Technology / Software': [
-    { business: 'CloudLogic Solutions', industry: 'Technology', location: 'Atlanta, GA', price: 11500000, revenue: 5200000, multiple: 2.21 },
-    { business: 'DataStream Partners', industry: 'Technology', location: 'Charlotte, NC', price: 16000000, revenue: 7100000, multiple: 2.25 },
-    { business: 'Nexus SaaS Group', industry: 'Technology', location: 'Raleigh, NC', price: 9400000, revenue: 4100000, multiple: 2.29 },
-  ],
-  Retail: [
-    { business: 'Tar Heel Outfitters', industry: 'Retail', location: 'Chapel Hill, NC', price: 750000, revenue: 520000, multiple: 1.44 },
-    { business: 'Old North Retail', industry: 'Retail', location: 'Asheville, NC', price: 890000, revenue: 610000, multiple: 1.46 },
-    { business: 'Piedmont Market', industry: 'Retail', location: 'High Point, NC', price: 680000, revenue: 470000, multiple: 1.45 },
-  ],
-}
-
-const DEFAULT_GUIDES: Comparable[] = [
-  { business: 'Comparable #1', industry: 'Services', location: 'Southeast', price: 950000, revenue: 620000, multiple: 1.53 },
-  { business: 'Comparable #2', industry: 'Services', location: 'Southeast', price: 1200000, revenue: 740000, multiple: 1.62 },
-  { business: 'Comparable #3', industry: 'Services', location: 'Mid-Atlantic', price: 1500000, revenue: 900000, multiple: 1.67 },
-]
+const NO_COMPARABLES_AVAILABLE: Comparable[] = []
 
 // ---------------------------------------------------------------------------
-// Deterministic 3-year (plus current) financial history derived from the
-// listing's reported revenue / SDE / EBITDA. Used to drive the financial
-// performance, EBITDA/SDE margin-trend, valuation and risk narratives.
+// 3-year (plus current) financial history derived from the listing's
+// reported revenue / SDE / EBITDA. Used to drive the financial performance,
+// EBITDA/SDE margin-trend, valuation and risk narratives.
+//
+// ROOT-CAUSE FIX: this previously applied an assumed trailing-growth curve
+// (revGrowth = [1.0, 0.965, 0.93, 0.88]) and a margin-expansion formula
+// (+i*0.012 / +i*0.011 per year back) to INVENT different revenue/SDE/EBITDA
+// figures for prior years — years for which no real data (uploaded document
+// or manual entry) exists. A broker who only ever entered a single current-
+// year figure would see a fabricated 3-year "trend" with specific invented
+// dollar amounts for years never reported. Fixed: every year now uses the
+// SAME real, listing-reported current-year figures — no assumed growth or
+// margin shift is applied. The document no longer states a specific prior-
+// year number that nobody provided.
 // ---------------------------------------------------------------------------
 interface HistoryYear {
   year: number
@@ -106,30 +92,16 @@ function buildHistory(listing: Listing): HistoryYear[] {
   const sde = listing.sde || 0
   const ebitda = listing.ebitda || sde * 0.82
   const baseYear = new Date().getFullYear()
-  // Trailing growth assumptions (industry-typical for main-street/lower-middle).
-  const revGrowth = [1.0, 0.965, 0.93, 0.88] // current, Y-1, Y-2, Y-3 (revenue scaling)
-  // Margin shapes: modest expansion over time as owner improves operations.
-  const years: HistoryYear[] = [0, 1, 2, 3].map((i) => {
-    const thisYear = baseYear - i
-    const rev = Math.round((revenue * revGrowth[i]) / 100) * 100
-    const sdeMargin = 0.24 + i * 0.012 + (sde ? sde / revenue - 0.25 : 0.0)
-    const ebitdaMargin = 0.17 + i * 0.011 + (ebitda ? ebitda / revenue - 0.18 : 0.0)
-    return {
-      year: thisYear,
-      revenue: rev,
-      sde: Math.round((rev * sdeMargin) / 100) * 100,
-      ebitda: Math.round((rev * ebitdaMargin) / 100) * 100,
-      sdeMargin,
-      ebitdaMargin,
-    }
-  })
-  // Force the current year to match the listing's reported figures.
-  if (sde) years[0].sde = sde
-  if (ebitda) years[0].ebitda = ebitda
-  years[0].revenue = revenue
-  years[0].sdeMargin = revenue ? sde / revenue : 0
-  years[0].ebitdaMargin = revenue ? years[0].ebitda / revenue : 0
-  return years
+  const sdeMargin = revenue ? sde / revenue : 0
+  const ebitdaMargin = revenue ? ebitda / revenue : 0
+  return [0, 1, 2, 3].map((i) => ({
+    year: baseYear - i,
+    revenue,
+    sde,
+    ebitda,
+    sdeMargin,
+    ebitdaMargin,
+  }))
 }
 
 // ---------------------------------------------------------------------------
@@ -154,8 +126,7 @@ export function generateBovContent(listing: Listing, attribution?: { preparedByN
   const priceSde = sde ? price / sde : null
   const priceEbitda = ebitda ? price / ebitda : null
 
-  // Use comparables matched to industry, else defaults
-  const comparables = INDUSTRY_GUIDES[listing.industry || ''] || DEFAULT_GUIDES
+  const comparables = NO_COMPARABLES_AVAILABLE
 
   // Valuation range: reflect reasonable SDE/EBITDA multiple bands for this
   // listing's industry (e.g. Home Care trades higher than a flat main-street
@@ -375,10 +346,14 @@ export function generateBovContent(listing: Listing, attribution?: { preparedByN
         },
         {
           heading: 'Method 2 — Market / Comparable Transactions',
-          body: [
-            'Guideline transactions in the region and sector support the multiples applied below. The Comparable Transactions table summarizes observed pricing relative to revenue for businesses of comparable size and characteristics.',
-            ...comparables.map((c) => `• ${c.business} (${c.industry}, ${c.location}): ${fmt(c.price)} at ${c.multiple ? c.multiple.toFixed(2) + 'x' : '—'} revenue.`),
-          ],
+          body: comparables.length > 0
+            ? [
+                'Guideline transactions in the region and sector support the multiples applied below. The Comparable Transactions table summarizes observed pricing relative to revenue for businesses of comparable size and characteristics.',
+                ...comparables.map((c) => `• ${c.business} (${c.industry}, ${c.location}): ${fmt(c.price)} at ${c.multiple ? c.multiple.toFixed(2) + 'x' : '—'} revenue.`),
+              ]
+            : [
+                'No comparable-transaction data source is currently connected for this valuation. This method is not applied here; the valuation range relies on Method 1 (multiple of normalized earnings) only.',
+              ],
         },
         {
           heading: 'Method 3 — Discounted Cash Flow (DCF) Framing',
