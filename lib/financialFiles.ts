@@ -55,6 +55,8 @@ export interface FinancialDoc {
   notes: string | null
   uploaded_by: string | null
   uploaded_at: string | null
+  visible_to_seller?: boolean
+  visible_to_buyer?: boolean
 }
 
 export interface UploadProgress {
@@ -406,6 +408,18 @@ export async function deleteFinancialFile(doc: FinancialDoc): Promise<{ success:
 // ---------------------------------------------------------------------------
 export async function updateFinancialStatus(docId: string, status: FinancialStatus): Promise<boolean> {
   const { error } = await supabase.from('financial_documents').update({ status }).eq('id', docId)
+  return !error
+}
+
+// ---------------------------------------------------------------------------
+// Client Portal sharing — broker toggles whether a document is visible to
+// the seller and/or buyer through their portal link.
+// ---------------------------------------------------------------------------
+export async function setFinancialDocVisibility(docId: string, patch: { visibleToSeller?: boolean; visibleToBuyer?: boolean }): Promise<boolean> {
+  const dbPatch: Record<string, boolean> = {}
+  if (patch.visibleToSeller !== undefined) dbPatch.visible_to_seller = patch.visibleToSeller
+  if (patch.visibleToBuyer !== undefined) dbPatch.visible_to_buyer = patch.visibleToBuyer
+  const { error } = await supabase.from('financial_documents').update(dbPatch).eq('id', docId)
   return !error
 }
 

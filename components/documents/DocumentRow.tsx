@@ -14,12 +14,32 @@ interface DocumentRowProps {
   onDeleted: (id: string) => void
 }
 
+const SOURCE_BADGE: Record<DocumentItem['source'], { label: string; color: string; bg: string }> = {
+  financial: { label: 'FINANCIAL', color: '#1d4ed8', bg: '#dbeafe' },
+  deal: { label: 'DEAL', color: '#a16207', bg: '#fef3c7' },
+  listing: { label: 'LEGAL', color: '#15803d', bg: '#dcfce7' },
+  seller_form: { label: 'SELLER FORM', color: '#15803d', bg: '#dcfce7' },
+  buyer_form: { label: 'BUYER FORM', color: '#7c3aed', bg: '#ede9fe' },
+}
+
+const READ_ONLY_SOURCES: DocumentItem['source'][] = ['seller_form', 'buyer_form']
+
 export default function DocumentRow({ doc, onDeleted }: DocumentRowProps) {
   const [previewOpen, setPreviewOpen] = useState(false)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(doc.fileUrl)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
-  const kind = fileKind(doc.fileUrl)
+  const kind = fileKind(doc.fileUrl || doc.fileName)
+  const badge = SOURCE_BADGE[doc.source]
+
+  const openPreview = async () => {
+    setPreviewOpen(true)
+    if (!doc.fileUrl) {
+      const url = await getDownloadUrl(doc)
+      setPreviewUrl(url)
+    }
+  }
 
   const handleDownload = async (e: React.MouseEvent) => {
     e.preventDefault()
@@ -56,8 +76,11 @@ export default function DocumentRow({ doc, onDeleted }: DocumentRowProps) {
 
         {/* Name + meta */}
         <div style={{ flex: 1, minWidth: '160px' }}>
-          <div style={{ fontWeight: 600, fontSize: '14px', color: '#0f172a', cursor: 'pointer' }} onClick={() => setPreviewOpen(true)}>
-            {doc.fileName}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <div style={{ fontWeight: 600, fontSize: '14px', color: '#0f172a', cursor: 'pointer' }} onClick={openPreview}>
+              {doc.fileName}
+            </div>
+            <span style={{ fontSize: '10px', fontWeight: 700, color: badge.color, background: badge.bg, padding: '1px 7px', borderRadius: '999px' }}>{badge.label}</span>
           </div>
           <div style={{ fontSize: '12px', color: '#94a3b8' }}>
             {doc.category || 'General'} · {formatDate(doc.createdAt)}
@@ -70,7 +93,7 @@ export default function DocumentRow({ doc, onDeleted }: DocumentRowProps) {
         {/* Actions */}
         <div style={{ display: 'flex', gap: '6px' }}>
           <button
-            onClick={() => setPreviewOpen(true)}
+            onClick={openPreview}
             style={{ padding: '6px 12px', background: '#f1f5f9', border: '1px solid #e2e8f0', borderRadius: '6px', fontSize: '13px', cursor: 'pointer', color: '#334155' }}
           >
             Preview
@@ -81,13 +104,15 @@ export default function DocumentRow({ doc, onDeleted }: DocumentRowProps) {
           >
             Download
           </button>
-          <button
-            onClick={handleDelete}
-            disabled={busy}
-            style={{ padding: '6px 12px', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '13px', cursor: busy ? 'not-allowed' : 'pointer', color: '#b91c1c' }}
-          >
-            {busy ? '…' : 'Delete'}
-          </button>
+          {!READ_ONLY_SOURCES.includes(doc.source) && (
+            <button
+              onClick={handleDelete}
+              disabled={busy}
+              style={{ padding: '6px 12px', background: '#fee2e2', border: '1px solid #fecaca', borderRadius: '6px', fontSize: '13px', cursor: busy ? 'not-allowed' : 'pointer', color: '#b91c1c' }}
+            >
+              {busy ? '…' : 'Delete'}
+            </button>
+          )}
         </div>
       </div>
 
@@ -106,18 +131,18 @@ export default function DocumentRow({ doc, onDeleted }: DocumentRowProps) {
               <button onClick={() => setPreviewOpen(false)} style={{ background: 'none', border: 'none', fontSize: '18px', cursor: 'pointer', color: '#64748b' }}>✕</button>
             </div>
             <div style={{ padding: '20px', overflowY: 'auto', flex: 1, background: '#fff' }}>
-              {doc.fileUrl ? (
+              {previewUrl ? (
                 kind === 'image' ? (
-                  <img src={doc.fileUrl} alt={doc.fileName || ''} style={{ maxWidth: '100%', borderRadius: '8px' }} />
+                  <img src={previewUrl} alt={doc.fileName || ''} style={{ maxWidth: '100%', borderRadius: '8px' }} />
                 ) : kind === 'pdf' ? (
-                  <iframe src={doc.fileUrl} title={doc.fileName || ''} style={{ width: '100%', height: '70vh', border: 'none', borderRadius: '8px' }} />
+                  <iframe src={previewUrl} title={doc.fileName || ''} style={{ width: '100%', height: '70vh', border: 'none', borderRadius: '8px' }} />
                 ) : (
                   <div style={{ textAlign: 'center', padding: '60px 20px', color: '#64748b' }}>
                     <div style={{ fontSize: '40px', marginBottom: '12px' }}>{fileIcon(kind)}</div>
                     <p style={{ margin: '0 0 8px', fontWeight: 600 }}>Preview not available for this file type.</p>
                     <p style={{ margin: '0 0 16px', fontSize: '14px' }}>Download it to open in its native application.</p>
                     <a
-                      href={doc.fileUrl}
+                      href={previewUrl}
                       target="_blank"
                       rel="noopener noreferrer"
                       style={{ padding: '10px 18px', background: '#2563eb', color: '#fff', borderRadius: '8px', textDecoration: 'none', fontSize: '14px', fontWeight: 600 }}
@@ -127,7 +152,7 @@ export default function DocumentRow({ doc, onDeleted }: DocumentRowProps) {
                   </div>
                 )
               ) : (
-                <div style={{ textAlign: 'center', color: '#94a3b8', padding: '40px' }}>No file URL available</div>
+                <div style={{ textAlign: 'center', color: '#94a3b8', padding: '40px' }}>Loading preview…</div>
               )}
             </div>
           </div>

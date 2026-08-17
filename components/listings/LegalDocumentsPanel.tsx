@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react'
 import { SELLER_FORM_SCHEMAS, SELLER_FORM_ORDER, type SellerFormType } from '@/lib/sellerFormSchemas'
-import { fetchSellerForms, saveSellerFormDraft, sendSellerFormToSeller, type SellerFormRow } from '@/lib/sellerForms'
+import { fetchSellerForms, saveSellerFormDraft, sendSellerFormToSeller, completeSellerFormInApp, type SellerFormRow } from '@/lib/sellerForms'
 import DynamicFormFields, { type FormValues } from '@/components/forms/DynamicFormFields'
 import { useToast } from '@/components/ui/Toast'
 import { getSignedFileUrl } from '@/lib/financialFiles'
@@ -102,6 +102,8 @@ function SellerFormEditorModal({
   const [shareLink, setShareLink] = useState<string | null>(
     initial?.share_token ? `${typeof window !== 'undefined' ? window.location.origin : ''}/seller-form/${listingId}/${initial.share_token}` : null,
   )
+  const [signerName, setSignerName] = useState('')
+  const [signerTitle, setSignerTitle] = useState('')
 
   const set = (key: string, value: string | boolean) => setValues((v) => ({ ...v, [key]: value }))
 
@@ -133,6 +135,27 @@ function SellerFormEditorModal({
     }
   }
 
+  // Complete right now, in-app — for a broker filling this out on the
+  // seller's behalf (in person, by phone) who needs the finished PDF
+  // immediately instead of waiting on a remote link the seller may never
+  // open. Generates the same signed PDF the remote flow produces.
+  const completeNow = async () => {
+    if (schema.requiresSignature && !signerName.trim()) {
+      toast('Enter the signer\'s full name first', 'info')
+      return
+    }
+    setBusy(true)
+    try {
+      await completeSellerFormInApp(listingId, formType, values, signerName.trim(), signerTitle.trim())
+      toast('Completed — PDF generated', 'success')
+      onSaved()
+    } catch (e: any) {
+      toast(e.message || 'Could not complete form', 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(26,26,46,0.55)', zIndex: 1000, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '30px 16px', overflowY: 'auto' }} onClick={onClose}>
       <div style={{ background: '#fff', borderRadius: 12, maxWidth: 760, width: '100%', padding: 28, maxHeight: '92vh', overflowY: 'auto' }} onClick={(e) => e.stopPropagation()}>
@@ -156,13 +179,31 @@ function SellerFormEditorModal({
           </div>
         )}
 
+        {initial?.status !== 'signed' && schema.requiresSignature && (
+          <div style={{ marginTop: 22, paddingTop: 18, borderTop: '1px solid var(--line)' }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--navy)', marginBottom: 10 }}>Complete now, in-app</div>
+            <p style={{ fontSize: 12, color: 'var(--muted)', margin: '0 0 10px' }}>Filling this out yourself with the seller in person or on the phone? Type their name below to finalize and generate the signed PDF immediately — no link needed.</p>
+            <div className="grid-2" style={{ gap: 12 }}>
+              <div>
+                <label className="label">Signer Full Name *</label>
+                <input className="input" value={signerName} onChange={(e) => setSignerName(e.target.value)} placeholder="e.g. Jane Seller" />
+              </div>
+              <div>
+                <label className="label">Title / Capacity</label>
+                <input className="input" value={signerTitle} onChange={(e) => setSignerTitle(e.target.value)} placeholder="e.g. Owner, Member, President" />
+              </div>
+            </div>
+          </div>
+        )}
+
         {initial?.status !== 'signed' && (
-          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22, flexWrap: 'wrap' }}>
             <button className="btn btn-ghost" onClick={onClose} disabled={busy}>Close</button>
             <button className="btn btn-ghost" onClick={saveDraft} disabled={busy}>{busy ? 'Saving…' : 'Save Draft'}</button>
             {schema.requiresSignature && (
-              <button className="btn btn-primary" onClick={sendToSeller} disabled={busy}>{busy ? 'Working…' : 'Send to Seller for Signature'}</button>
+              <button className="btn btn-ghost" onClick={sendToSeller} disabled={busy}>{busy ? 'Working…' : 'Send to Seller for Signature'}</button>
             )}
+            <button className="btn btn-primary" onClick={completeNow} disabled={busy}>{busy ? 'Generating…' : 'Complete & Generate PDF'}</button>
           </div>
         )}
       </div>

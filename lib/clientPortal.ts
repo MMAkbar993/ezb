@@ -35,6 +35,7 @@ export interface ClientAccess {
   client_email: string
   token: string
   status: string
+  party_type: 'seller' | 'buyer'
   created_at?: string
 }
 
@@ -67,6 +68,7 @@ export interface PortalDeal {
 export interface PortalSnapshot {
   ok: boolean
   clientName: string
+  partyType?: 'seller' | 'buyer'
   deal: PortalDeal | null
   documents: any[]
   milestones: PortalMilestone[]
@@ -74,11 +76,12 @@ export interface PortalSnapshot {
 }
 
 // -- Broker-side management (anon client, RLS) --------------------------------
-export async function grantClientAccess(input: { dealId: string; clientName: string; clientEmail: string }): Promise<ClientAccess | null> {
+export async function grantClientAccess(input: { dealId: string; clientName: string; clientEmail: string; partyType?: 'seller' | 'buyer' }): Promise<ClientAccess | null> {
   try {
     const token = makeToken(input.dealId, input.clientEmail)
     const { data, error } = await supabase.from('client_portal_access').insert({
       deal_id: input.dealId, client_name: input.clientName, client_email: input.clientEmail, token,
+      party_type: input.partyType || 'seller',
     }).select().single()
     if (error) { console.error('[portal] grant', error); return null }
     return data as unknown as ClientAccess
@@ -114,6 +117,20 @@ export async function fetchPortalSnapshot(dealId: string, token: string): Promis
     return (await res.json()) as PortalSnapshot
   } catch {
     return null
+  }
+}
+
+/** Delete a document the client themself uploaded (server enforces ownership). */
+export async function deletePortalDocument(dealId: string, token: string, docId: string): Promise<boolean> {
+  try {
+    const res = await fetch('/api/portal', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ dealId, token, action: 'delete', docId }),
+    })
+    return res.ok
+  } catch {
+    return false
   }
 }
 

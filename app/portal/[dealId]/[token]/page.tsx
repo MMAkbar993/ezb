@@ -10,7 +10,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import {
-  fetchPortalSnapshot, sendPortalMessage,
+  fetchPortalSnapshot, sendPortalMessage, deletePortalDocument,
   type PortalDeal, type PortalMilestone, type PortalMessageUpdate,
 } from '@/lib/clientPortal'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
@@ -49,6 +49,7 @@ function PortalBody() {
 
   const [authorized, setAuthorized] = useState<null | boolean>(null)
   const [clientName, setClientName] = useState('')
+  const [partyType, setPartyType] = useState<'seller' | 'buyer'>('seller')
   const [deal, setDeal] = useState<PortalDeal | null>(null)
   const [documents, setDocuments] = useState<any[]>([])
   const [milestones, setMilestones] = useState<PortalMilestone[]>([])
@@ -62,8 +63,15 @@ function PortalBody() {
     if (!snap) { setAuthorized(false); return }
     setAuthorized(true)
     setClientName(snap.clientName)
+    setPartyType(snap.partyType || 'seller')
     setDeal(snap.deal); setDocuments(snap.documents); setMilestones(snap.milestones); setMessages(snap.messages)
   }, [dealId, token])
+
+  const handleDeleteDoc = async (docId: string) => {
+    if (!confirm('Remove this document you uploaded?')) return
+    const ok = await deletePortalDocument(dealId, token, docId)
+    if (ok) { toast('Document removed'); load() } else toast('Could not remove document', 'error')
+  }
 
   const handleUpload = async (file: File) => {
     setUploading(true)
@@ -171,14 +179,19 @@ function PortalBody() {
                 <p style={{ color: 'var(--muted)', fontSize: 13 }}>No documents shared yet.</p>
               ) : (
                 documents.slice(0, 8).map((d) => (
-                  <a key={d.id} href={d.file_url || '#'} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', border: '1px solid var(--line)', borderRadius: 8, textDecoration: 'none', color: 'inherit' }}>
-                    <span style={{ fontSize: 16 }}>📄</span>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.file_name || d.name || 'Document'}</div>
-                      <div style={{ fontSize: 12, color: 'var(--muted)' }}>{d.category || 'Shared'}</div>
-                    </div>
-                    <span style={{ color: 'var(--navy)', fontSize: 13 }}>↗</span>
-                  </a>
+                  <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', border: '1px solid var(--line)', borderRadius: 8 }}>
+                    <a href={d.file_url || '#'} target="_blank" rel="noreferrer" style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1, minWidth: 0, textDecoration: 'none', color: 'inherit' }}>
+                      <span style={{ fontSize: 16 }}>{d.source === 'financial' ? '📊' : '📄'}</span>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: 13.5, fontWeight: 600, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.file_name || d.name || 'Document'}</div>
+                        <div style={{ fontSize: 12, color: 'var(--muted)' }}>{d.source === 'financial' ? 'Financial' : (d.category || 'Shared')}</div>
+                      </div>
+                      <span style={{ color: 'var(--navy)', fontSize: 13 }}>↗</span>
+                    </a>
+                    {d.uploaded_by_role === partyType && (
+                      <button onClick={() => handleDeleteDoc(d.id)} style={{ background: 'none', border: 'none', color: '#dc2626', cursor: 'pointer', fontSize: 13, flexShrink: 0 }} title="Remove your upload">✕</button>
+                    )}
+                  </div>
                 ))
               )}
             </div>

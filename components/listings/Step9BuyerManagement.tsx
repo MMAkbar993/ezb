@@ -6,6 +6,7 @@ import { fetchBuyers, addBuyer, updateBuyer, completeStep, recordLOI, uploadBuye
 import { getSignedFileUrl } from '@/lib/financialFiles'
 import StatusBadge from '@/components/listings/StatusBadge'
 import BuyerInquiriesList from '@/components/listings/BuyerInquiriesList'
+import AgentBuyerInquiryModal from '@/components/listings/AgentBuyerInquiryModal'
 import { fetchBuyerInquiries, type BuyerInquiry } from '@/lib/buyerInquiries'
 import { useToast } from '@/components/ui/Toast'
 
@@ -22,6 +23,8 @@ export default function Step9BuyerManagement({ listingId, onNext, onAgreementCha
   const [inquiries, setInquiries] = useState<BuyerInquiry[]>([])
   const [form, setForm] = useState(emptyBuyer)
   const [busy, setBusy] = useState(false)
+  const [showAgentEntry, setShowAgentEntry] = useState(false)
+  const [inquiriesRefreshTick, setInquiriesRefreshTick] = useState(0)
 
   const load = async () => {
     setBuyers(await fetchBuyers(listingId))
@@ -224,16 +227,28 @@ export default function Step9BuyerManagement({ listingId, onNext, onAgreementCha
       ))}
 
       <div style={{ marginTop: 28, paddingTop: 24, borderTop: '1px solid var(--line)' }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy)', marginBottom: 4 }}>Buyer Inquiries (public NDA gate)</div>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 4, flexWrap: 'wrap' }}>
+          <div style={{ fontSize: 14, fontWeight: 700, color: 'var(--navy)' }}>Buyer Inquiries (NDA + Buyer Profile Form)</div>
+          <button className="btn btn-ghost" style={{ fontSize: 12.5, padding: '6px 12px' }} onClick={() => setShowAgentEntry(true)}>+ Record Buyer NDA (Agent Entry)</button>
+        </div>
         <p style={{ fontSize: 12.5, color: 'var(--muted)', margin: '0 0 12px' }}>
-          Buyers who signed the NDA and Buyer Profile Form on the public listing page to unlock financials — a real, timestamped record, separate from the manual tracker above.
+          Buyers who signed the NDA and Buyer Profile Form on the public listing page, or were entered here directly by the agent (phone/in-person inquiries) — a real, timestamped record with a downloadable signed PDF, separate from the manual tracker above.
         </p>
         <BuyerInquiriesList
+          key={inquiriesRefreshTick}
           listingId={listingId}
           trackedEmails={buyers.map((b) => (b.buyer_email || '').toLowerCase()).filter(Boolean)}
           onPromoted={load}
         />
       </div>
+
+      {showAgentEntry && (
+        <AgentBuyerInquiryModal
+          listingId={listingId}
+          onClose={() => setShowAgentEntry(false)}
+          onSaved={() => { setShowAgentEntry(false); setInquiriesRefreshTick((t) => t + 1); load() }}
+        />
+      )}
     </StepShell>
   )
 }

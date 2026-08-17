@@ -27,13 +27,35 @@ export interface BuyerInquiry {
   ip_address: string | null
 }
 
-export async function fetchBuyerInquiries(listingId: string): Promise<BuyerInquiry[]> {
+/** Pass no listingId to fetch every signed inquiry across all listings (Documents dashboard). */
+export async function fetchBuyerInquiries(listingId?: string): Promise<BuyerInquiry[]> {
   const token = await getAccessToken()
   if (!token) throw new Error('You need to be signed in to view buyer inquiries.')
-  const res = await fetch(`/api/listing-nda-signatures?listingId=${encodeURIComponent(listingId)}`, {
+  const qs = listingId ? `?listingId=${encodeURIComponent(listingId)}` : ''
+  const res = await fetch(`/api/listing-nda-signatures${qs}`, {
     headers: { Authorization: 'Bearer ' + token },
   })
   const data = await res.json()
   if (!data.ok) throw new Error(data.error || 'Failed to load buyer inquiries')
   return data.inquiries as BuyerInquiry[]
+}
+
+/** Agent-entered buyer NDA + Buyer Profile Form — same output as the public gate. */
+export async function submitAgentBuyerInquiry(input: {
+  listingId: string
+  buyerName: string
+  buyerEmail: string
+  ndaFormData: FormValues
+  buyerProfile: FormValues
+}): Promise<BuyerInquiry> {
+  const token = await getAccessToken()
+  if (!token) throw new Error('You need to be signed in to record a buyer inquiry.')
+  const res = await fetch('/api/listing-nda-signatures', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+    body: JSON.stringify(input),
+  })
+  const data = await res.json()
+  if (!data.ok) throw new Error(data.error || 'Failed to record buyer inquiry')
+  return data.inquiry as BuyerInquiry
 }

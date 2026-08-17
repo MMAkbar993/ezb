@@ -10,8 +10,10 @@
 // =============================================================================
 
 import { supabase } from '@/lib/supabase/client'
-import type { SellerFormType } from '@/lib/sellerFormSchemas'
+import { SELLER_FORM_SCHEMAS, buildListingAgreementClauses, type SellerFormType } from '@/lib/sellerFormSchemas'
 import type { FormValues } from '@/components/forms/DynamicFormFields'
+import { exportFilledFormToPdf } from '@/lib/formPdf'
+import { FF_BUCKET } from '@/lib/storageBuckets'
 
 export interface SellerFormRow {
   id: string
@@ -44,6 +46,65 @@ export async function saveSellerFormDraft(listingId: string, formType: SellerFor
     .from('seller_forms')
     .upsert(
       { listing_id: listingId, form_type: formType, form_data: formData, created_by: userData?.user?.id || null, updated_at: new Date().toISOString() },
+      { onConflict: 'listing_id,form_type' },
+    )
+    .select()
+    .single()
+  if (error) throw new Error(error.message)
+  return data as SellerFormRow
+}
+
+// ---------------------------------------------------------------------------
+// Complete a form directly in-app — the broker fills it in on behalf of the
+// seller (in person, by phone, etc.) and generates the final signed PDF
+// immediately, without a separate no-login share-link round trip. Previously
+// the ONLY way a completed form ever produced a downloadable PDF was through
+// the remote /seller-form/[listingId]/[token] sign flow — a broker-filled
+// draft that was never sent out (or was filled faster than the seller could
+// click the link) stayed stuck with no PDF at all.
+// ---------------------------------------------------------------------------
+export async function completeSellerFormInApp(
+  listingId: string,
+  formType: SellerFormType,
+  formData: FormValues,
+  signerName: string,
+  signerTitle: string,
+): Promise<SellerFormRow> {
+  const schema = SELLER_FORM_SCHEMAS[formType]
+  const { data: listing } = await supabase.from('listings').select('business_name').eq('id', listingId).maybeSingle()
+  const signedAt = new Date().toISOString()
+
+  const bytes = exportFilledFormToPdf(
+    {
+      title: schema.title,
+      subtitle: (listing as any)?.business_name || 'Business Listing',
+      intro: schema.intro,
+      sections: schema.sections,
+      values: formData,
+      signerName: signerName || undefined,
+      signerTitle: signerTitle || undefined,
+      signedAt,
+      ipNote: 'Completed in-app by broker on behalf of signer.',
+      ...(formType === 'listing_agreement' ? { clauseTitle: 'Agreement Terms', clauseText: buildListingAgreementClauses(formData) } : {}),
+    },
+    { returnBytes: true },
+  ) as Uint8Array
+
+  const path = `seller-forms/${listingId}/${Date.now()}-${formType}.pdf`
+  const { error: upErr } = await supabase.storage
+    .from(FF_BUCKET)
+    .upload(path, new Blob([bytes as BlobPart], { type: 'application/pdf' }), { contentType: 'application/pdf', upsert: false })
+  if (upErr) throw new Error(upErr.message)
+
+  const { data: userData } = await supabase.auth.getUser()
+  const { data, error } = await supabase
+    .from('seller_forms')
+    .upsert(
+      {
+        listing_id: listingId, form_type: formType, form_data: formData,
+        status: 'signed', signer_name: signerName || null, signer_title: signerTitle || null,
+        signed_at: signedAt, pdf_url: path, created_by: userData?.user?.id || null, updated_at: signedAt,
+      },
       { onConflict: 'listing_id,form_type' },
     )
     .select()

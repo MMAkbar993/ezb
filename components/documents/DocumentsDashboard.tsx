@@ -28,14 +28,12 @@ export default function DocumentsDashboard() {
       setGroups(g)
       setActivity(a)
 
-      // Build upload target list (deals + listings that exist)
-      const dealTargets = g
-        .filter((grp) => grp.source === 'deal')
-        .map((grp) => ({ id: `deal:${grp.parentId}`, source: 'deal' as const, name: grp.parentName }))
+      // Build upload target list — one entry per listing (each group is now a
+      // single business, not split by source table).
       const listingTargets = g
-        .filter((grp) => grp.source === 'listing')
+        .filter((grp) => grp.parentId)
         .map((grp) => ({ id: `listing:${grp.parentId}`, source: 'listing' as const, name: grp.parentName }))
-      setTargets([...dealTargets, ...listingTargets])
+      setTargets(listingTargets)
     } catch (err: any) {
       setError(err.message || 'Failed to load documents')
     } finally {
@@ -88,7 +86,7 @@ export default function DocumentsDashboard() {
         <div>
           <h1 style={{ margin: 0, fontSize: '24px', fontWeight: 700, color: '#0f172a' }}>Documents</h1>
           <p style={{ margin: '4px 0 0', color: '#64748b', fontSize: '14px' }}>
-            {totalDocuments} document{totalDocuments === 1 ? '' : 's'} across {groups.length} deal{groups.length === 1 ? '' : 's'}/listing{groups.length === 1 ? '' : 's'}
+            {totalDocuments} document{totalDocuments === 1 ? '' : 's'} across {groups.length} listing{groups.length === 1 ? '' : 's'}
           </p>
         </div>
         <div style={{ display: 'flex', gap: '12px' }}>
@@ -137,11 +135,8 @@ export default function DocumentsDashboard() {
                 {/* Group header */}
                 <div style={{ padding: '14px 18px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <span style={{ fontSize: '18px' }}>{group.source === 'deal' ? '🤝' : '🏢'}</span>
+                    <span style={{ fontSize: '18px' }}>🏢</span>
                     <span style={{ fontWeight: 700, fontSize: '15px', color: '#0f172a' }}>{group.parentName}</span>
-                    <span style={{ fontSize: '11px', fontWeight: 600, color: group.source === 'deal' ? '#1d4ed8' : '#15803d', background: group.source === 'deal' ? '#dbeafe' : '#dcfce7', padding: '2px 8px', borderRadius: '999px' }}>
-                      {group.source === 'deal' ? 'DEAL' : 'LISTING'}
-                    </span>
                   </div>
                   <span style={{ fontSize: '12px', color: '#94a3b8' }}>{group.documents.length}</span>
                 </div>

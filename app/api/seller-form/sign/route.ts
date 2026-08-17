@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { SELLER_FORM_SCHEMAS, type SellerFormType } from '@/lib/sellerFormSchemas'
+import { SELLER_FORM_SCHEMAS, buildListingAgreementClauses, type SellerFormType } from '@/lib/sellerFormSchemas'
 import { exportFilledFormToPdf } from '@/lib/formPdf'
 import { FF_BUCKET } from '@/lib/storageBuckets'
 
@@ -19,31 +19,6 @@ import { FF_BUCKET } from '@/lib/storageBuckets'
 // ---------------------------------------------------------------------------
 
 export const runtime = 'nodejs'
-
-// The Exclusive Marketing & Listing Agreement's numbered clauses, with
-// commission % / minimum fee / term interpolated from the broker's filled
-// values (falling back to EZ Business Advisors' standard terms — 8%,
-// $15,000 minimum, 12 months — when left blank). The other clauses are
-// fixed boilerplate, reproduced verbatim from the source agreement.
-function buildListingAgreementClauses(formData: Record<string, unknown>): string[] {
-  const commission = formData.broker_commission_percent ? Number(formData.broker_commission_percent) : 8
-  const minFee = formData.commission_minimum_fee ? Number(formData.commission_minimum_fee) : 15000
-  const termMonths = formData.agreement_term_months ? Number(formData.agreement_term_months) : 12
-  const minFeeStr = minFee.toLocaleString('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 })
-
-  return [
-    '1. Exclusive Right to Market. Seller grants Broker the exclusive right to market and seek a purchaser for the Business during the Term. Broker is a licensed business broker acting solely as a transaction intermediary. Broker is NOT a real estate broker or real estate agent, and this Agreement does not confer real estate brokerage authority.',
-    `2. Term. The initial term of this Agreement is ${termMonths} month${termMonths === 1 ? '' : 's'} beginning on the date of execution, unless extended in writing by the parties.`,
-    "3. Marketing and Co-Brokerage. Broker may advertise, market, and co-broke the listing in Broker's sole discretion, including listing on business-for-sale platforms, co-brokering with other business brokers, and any other lawful marketing activity.",
-    `4. Broker Compensation. Seller shall pay Broker ${commission}% of the total sales price, with a minimum fee of ${minFeeStr}, due upon Closing or upon Broker's procurement of a ready, willing, and able buyer on terms acceptable to Seller, whichever occurs first.`,
-    '5. Seller Cooperation. Seller shall cooperate fully with Broker, including timely referral of all inquiries, prompt disclosure of all relevant information, attendance at closing if requested, and delivery of all closing documents in a timely manner.',
-    "6. Seller Representations. Seller represents that all information supplied is accurate to the best of Seller's knowledge and may be relied upon by Broker and prospective purchasers. Seller shall promptly notify Broker of any material change in business conditions, financial performance, or legal status.",
-    "7. Indemnification. Seller agrees to indemnify and hold Broker harmless from any claims, losses, damages, costs, and attorneys' fees arising from false, incomplete, or misleading information supplied by Seller, or from Seller's breach of any obligation under this Agreement.",
-    "8. Governing Law; Venue. This Agreement is governed by the laws of the Commonwealth of Pennsylvania. Any action shall be brought in Dauphin County, Pennsylvania, or the federal court serving Harrisburg, PA, unless otherwise required by law. The prevailing party is entitled to reasonable attorneys' fees.",
-    "9. Electronic Signatures. Electronic signatures and electronic delivery are valid and binding to the fullest extent permitted by Pennsylvania's Electronic Transactions Act, 73 P.S. § 2260.101 et seq.",
-    '10. Entire Agreement. This Agreement contains the entire understanding of the parties and supersedes all prior discussions, negotiations, and representations. It may be modified only in a signed writing executed by both parties.',
-  ]
-}
 
 export async function POST(req: NextRequest) {
   const svc = createServerClient()

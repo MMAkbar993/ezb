@@ -147,6 +147,10 @@ async function saveGeneratedDoc(step: {
   const publicUrl = urlData?.publicUrl || ''
 
   const fileName = `${safeName}.pdf`
+  // Only the BOV and CIM are meant for buyer eyes ("we only share financial,
+  // CIM and BOV to buyer") — Recast and the BLI stay broker/seller-internal
+  // by default. The broker can still flip visibility manually afterward.
+  const visibleToBuyer = step.stage === 'bov' || step.stage === 'cim'
   const { data, error } = await supabase
     .from('financial_documents')
     .insert({
@@ -161,6 +165,7 @@ async function saveGeneratedDoc(step: {
       category: 'generated_document',
       status: step.status,
       notes: `Auto-generated ${step.title} (${step.stage.toUpperCase()})`,
+      visible_to_buyer: visibleToBuyer,
     })
     .select()
     .single()

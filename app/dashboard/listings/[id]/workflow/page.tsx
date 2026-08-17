@@ -13,9 +13,6 @@ import { ToastProvider, useToast } from '@/components/ui/Toast'
 import WorkflowDashboard from '@/components/listings/WorkflowDashboard'
 import Step1LegalDocs from '@/components/listings/Step1LegalDocs'
 import Step2FinancialDetails from '@/components/listings/Step2FinancialDetails'
-import Step4GenerateBOV from '@/components/listings/Step4GenerateBOV'
-import Step5GenerateCIM from '@/components/listings/Step5GenerateCIM'
-import Step6GenerateBLI from '@/components/listings/Step6GenerateBLI'
 import Step7SBAQualification from '@/components/listings/Step7SBAQualification'
 import Step8ListBusiness from '@/components/listings/Step8ListBusiness'
 import Step9BuyerManagement from '@/components/listings/Step9BuyerManagement'
@@ -56,16 +53,20 @@ function WorkflowBody() {
 
   useEffect(() => { load() }, [load])
 
-  // Step 3 ("Recast Financials") is retired from the guided workflow — Recast
-  // now lives only as the standalone /recast tool, which reads a listing's
-  // real financials directly rather than duplicating a form here. Rather than
-  // renumbering steps 4-10 (which would corrupt current_step/completed_steps
-  // for listings already mid-workflow in production), step 3 auto-completes
-  // itself and advances straight to step 4 without ever rendering.
+  // Steps 3-6 (Recast, Generate BOV, Generate CIM, Generate BLI) are retired
+  // from the guided workflow — brokers were having to re-upload the same
+  // financial documents at each of these steps individually. Recast/BOV/CIM/
+  // BLI all now live in one place, the Financial tab (/dashboard/financial),
+  // which already uploads once and generates all four documents together via
+  // the same underlying pipeline these steps used to call one at a time.
+  // Rather than renumbering steps 7-10 (which would corrupt
+  // current_step/completed_steps for listings already mid-workflow in
+  // production), steps 3-6 auto-complete themselves in sequence and advance
+  // straight to step 7 without ever rendering.
   useEffect(() => {
-    if (activeStep === 3 && !loading) {
-      completeStep(listingId, 3).then(() => {
-        setActiveStep(4)
+    if (activeStep >= 3 && activeStep <= 6 && !loading) {
+      completeStep(listingId, activeStep).then(() => {
+        setActiveStep(activeStep + 1)
         getWorkflow(listingId).then(setWorkflow)
       })
     }
@@ -115,10 +116,7 @@ function WorkflowBody() {
       {/* Active step component */}
       {activeStep === 1 && <Step1LegalDocs listingId={listingId} onNext={goNext} />}
       {activeStep === 2 && <Step2FinancialDetails listingId={listingId} onNext={goNext} />}
-      {activeStep === 3 && <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>Advancing…</div>}
-      {activeStep === 4 && <Step4GenerateBOV listingId={listingId} onNext={goNext} />}
-      {activeStep === 5 && <Step5GenerateCIM listingId={listingId} onNext={goNext} />}
-      {activeStep === 6 && <Step6GenerateBLI listingId={listingId} onNext={goNext} />}
+      {activeStep >= 3 && activeStep <= 6 && <div style={{ padding: 40, textAlign: 'center', color: 'var(--muted)' }}>Advancing…</div>}
       {activeStep === 7 && <Step7SBAQualification listingId={listingId} onNext={goNext} />}
       {activeStep === 8 && <Step8ListBusiness listingId={listingId} onNext={goNext} />}
       {activeStep === 9 && <Step9BuyerManagement listingId={listingId} onNext={goNext} onAgreementChange={refresh} />}

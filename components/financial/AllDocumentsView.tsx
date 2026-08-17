@@ -8,7 +8,7 @@
 
 import { useMemo, useState } from 'react'
 import type { FinancialDoc, FinancialStatus } from '@/lib/financialFiles'
-import { formatBytes, getSignedFileUrl } from '@/lib/financialFiles'
+import { formatBytes, getSignedFileUrl, setFinancialDocVisibility } from '@/lib/financialFiles'
 import { FileTypeBadge, CategoryBadge, StatusPill } from '@/components/financial/FilesUI'
 import { downloadDocsAsZip } from '@/lib/zip'
 
@@ -17,6 +17,37 @@ interface Props {
   onRefresh: () => void
   onDelete: (doc: FinancialDoc) => void
   dealTitle: (id: string | null) => string
+}
+
+function ShareToggle({ doc, onRefresh }: { doc: FinancialDoc; onRefresh: () => void }) {
+  const [busy, setBusy] = useState(false)
+  const toggle = async (key: 'visibleToSeller' | 'visibleToBuyer', current: boolean) => {
+    setBusy(true)
+    await setFinancialDocVisibility(doc.id, { [key]: !current })
+    setBusy(false)
+    onRefresh()
+  }
+  const chip = (label: string, active: boolean, onClick: () => void): React.ReactElement => (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={onClick}
+      style={{
+        padding: '3px 8px', borderRadius: 999, fontSize: 10.5, fontWeight: 700, cursor: busy ? 'not-allowed' : 'pointer',
+        border: `1px solid ${active ? '#16a34a' : 'var(--line)'}`,
+        background: active ? '#dcfce7' : '#fff',
+        color: active ? '#15803d' : 'var(--muted)',
+      }}
+    >
+      {label}
+    </button>
+  )
+  return (
+    <div style={{ display: 'flex', gap: 5 }}>
+      {chip('Seller', !!doc.visible_to_seller, () => toggle('visibleToSeller', !!doc.visible_to_seller))}
+      {chip('Buyer', !!doc.visible_to_buyer, () => toggle('visibleToBuyer', !!doc.visible_to_buyer))}
+    </div>
+  )
 }
 
 type Filter = 'all' | 'uploaded' | 'generated' | FinancialStatus
@@ -129,7 +160,7 @@ export default function AllDocumentsView({ docs, onRefresh, onDelete, dealTitle 
           <table style={{ width: '100%', borderCollapse: 'collapse', fontFamily: 'Georgia, serif', fontSize: 13.5 }}>
             <thead>
               <tr style={{ borderBottom: '2px solid var(--gold-dark)', textAlign: 'left', background: '#faf9f5' }}>
-                {['Document', 'Deal / Listing', 'Category', 'Status', 'Size', 'Modified', 'Actions'].map((h) => (
+                {['Document', 'Deal / Listing', 'Category', 'Status', 'Shared with', 'Size', 'Modified', 'Actions'].map((h) => (
                   <th key={h} style={{ padding: '10px 12px', fontWeight: 700, color: 'var(--navy)', fontSize: 11.5, textTransform: 'uppercase', letterSpacing: 0.4, whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
@@ -162,6 +193,7 @@ export default function AllDocumentsView({ docs, onRefresh, onDelete, dealTitle 
                     </td>
                     <td style={{ padding: '11px 12px' }}><CategoryBadge category={f.category as any} /></td>
                     <td style={{ padding: '11px 12px' }}><StatusPill status={(f.status || 'pending') as FinancialStatus} /></td>
+                    <td style={{ padding: '11px 12px' }}><ShareToggle doc={f} onRefresh={onRefresh} /></td>
                     <td style={{ padding: '11px 12px', color: 'var(--muted)', fontSize: 12.5, whiteSpace: 'nowrap' }}>{formatBytes(f.file_size)}</td>
                     <td style={{ padding: '11px 12px', color: 'var(--muted)', fontSize: 12.5, whiteSpace: 'nowrap' }}>
                       {f.uploaded_at ? new Date(f.uploaded_at).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
