@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { requireUser, unauthorized } from '@/lib/apiAuth'
-import { NDA_FORM_SECTIONS, BUYER_PROFILE_SECTIONS } from '@/lib/buyerFormSchemas'
-import { exportFilledFormToPdf } from '@/lib/formPdf'
+import { generateNdaProfilePdf } from '@/lib/buyerFormPdf.server'
 import { FF_BUCKET } from '@/lib/storageBuckets'
 
 // ---------------------------------------------------------------------------
@@ -65,25 +64,9 @@ export async function POST(req: NextRequest) {
 
   let pdfPath: string | null = null
   try {
-    const bytes = exportFilledFormToPdf(
-      {
-        title: 'Confidentiality & Registration Agreement + Buyer Profile Form',
-        subtitle: listing.business_name || 'Business Listing',
-        sections: [
-          { title: 'Listing', fields: [
-            { key: '_listing_id', label: 'Business Listing ID No.', type: 'text' },
-            { key: '_business_category', label: 'Business Category', type: 'text' },
-          ] },
-          ...NDA_FORM_SECTIONS,
-          ...BUYER_PROFILE_SECTIONS,
-        ],
-        values: { _listing_id: listing.id, _business_category: listing.industry || '—', ...ndaFormData, ...buyerProfile },
-        signerName: buyerName,
-        signedAt,
-        ipNote: `Entered in-app by broker (${auth.user.email || auth.user.id}) on behalf of the buyer.`,
-      },
-      { returnBytes: true },
-    ) as Uint8Array
+    const bytes = await generateNdaProfilePdf({
+      listingId, businessCategory: listing.industry, ndaFormData, buyerProfile, signerName: buyerName, signedAt,
+    })
 
     const path = `nda-forms/${listingId}/${Date.now()}-${buyerEmail.replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`
     const { error: upErr } = await auth.supabase.storage.from(FF_BUCKET).upload(path, Buffer.from(bytes), { contentType: 'application/pdf', upsert: false })

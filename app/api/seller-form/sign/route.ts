@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase/server'
-import { SELLER_FORM_SCHEMAS, buildListingAgreementClauses, type SellerFormType } from '@/lib/sellerFormSchemas'
-import { exportFilledFormToPdf } from '@/lib/formPdf'
+import { SELLER_FORM_SCHEMAS, type SellerFormType } from '@/lib/sellerFormSchemas'
+import { generateSellerFormPdf } from '@/lib/sellerFormPdf.server'
 import { FF_BUCKET } from '@/lib/storageBuckets'
 
 // ---------------------------------------------------------------------------
 // POST /api/seller-form/sign — seller reviews and signs a seller-form link
-// (no login; the share_token is the auth). Saves the answers and generates a
-// filled PDF (lib/formPdf.ts — same jsPDF engine as Recast/BOV/CIM/BLI).
+// (no login; the share_token is the auth). Saves the answers and generates
+// the seller's real branded PDF (lib/sellerFormPdf.server.ts) where one is
+// mapped, falling back to the older from-scratch jsPDF renderer otherwise.
 //
 // The PDF contains the seller's home address, phone, and business financial
 // figures — it goes in the private `financial_docs` bucket (FF_BUCKET), the
@@ -60,23 +61,10 @@ export async function POST(req: NextRequest) {
   // when an authenticated broker asks to view it.
   let pdfPath: string | null = null
   try {
-    const bytes = exportFilledFormToPdf(
-      {
-        title: schema.title,
-        subtitle: listing?.business_name || 'Business Listing',
-        intro: schema.intro,
-        sections: schema.sections,
-        values: formData,
-        signerName,
-        signerTitle,
-        signedAt,
-        ipNote: `Signed from IP ${ip || 'unknown'}`,
-        ...(row.form_type === 'listing_agreement'
-          ? { clauseTitle: 'Agreement Terms', clauseText: buildListingAgreementClauses(formData) }
-          : {}),
-      },
-      { returnBytes: true },
-    ) as Uint8Array
+    const bytes = await generateSellerFormPdf({
+      formType: row.form_type as SellerFormType, businessName: listing?.business_name || null,
+      formData, signerName, signerTitle, signedAt,
+    })
 
     const path = `seller-forms/${listingId}/${Date.now()}-${row.form_type}.pdf`
     const { error: upErr } = await svc.storage.from(FF_BUCKET).upload(path, Buffer.from(bytes), { contentType: 'application/pdf', upsert: false })

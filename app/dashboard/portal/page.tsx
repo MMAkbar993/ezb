@@ -5,12 +5,13 @@ import AppShell from '@/components/layout/AppShell'
 import { Card, CardHeader, LoadingState } from '@/components/ui'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { fetchClientAccess, grantClientAccess, revokeClientAccess, type ClientAccess } from '@/lib/clientPortal'
+import { fetchDocumentGroups, setDocumentVisibility, type DocumentItem } from '@/lib/documents'
+import { ensureDealForListing } from '@/lib/pipeline'
 import { supabase } from '@/lib/supabase/client'
 
 const APP_URL = typeof window !== 'undefined' ? window.location.origin : ''
 
-interface DealOption { id: string; title: string | null; status: string | null }
-interface DealDocRow { id: string; file_name: string | null; category: string | null; visible_to_seller: boolean; visible_to_buyer: boolean }
+interface ListingOption { id: string; business_name: string | null; status: string | null }
 
 export default function PortalPage() {
   return (
@@ -28,50 +29,64 @@ export default function PortalPage() {
 
 function PortalManager() {
   const toast = useToast()
-  const [deals, setDeals] = useState<DealOption[]>([])
-  const [selected, setSelected] = useState('')
+  const [listings, setListings] = useState<ListingOption[]>([])
+  const [selected, setSelected] = useState('')  // selected LISTING id — a deal may not exist for it yet
+  const [dealId, setDealId] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
   const [partyType, setPartyType] = useState<'seller' | 'buyer'>('seller')
   const [access, setAccess] = useState<ClientAccess[]>([])
-  const [dealDocs, setDealDocs] = useState<DealDocRow[]>([])
+  const [allGroups, setAllGroups] = useState<{ parentId: string; documents: DocumentItem[] }[]>([])
+  const [loadingDocs, setLoadingDocs] = useState(true)
   const [busy, setBusy] = useState(false)
   const [copied, setCopied] = useState<string>('')
 
-  const loadAccess = useCallback(async (dealId: string) => {
-    setAccess(await fetchClientAccess(dealId))
-    const { data } = await supabase.from('deal_documents')
-      .select('id, file_name, category, visible_to_seller, visible_to_buyer')
-      .eq('deal_id', dealId).order('created_at', { ascending: false })
-    setDealDocs((data || []) as DealDocRow[])
+  const dealDocs = allGroups.find((g) => g.parentId === selected)?.documents.filter((d) => d.source === 'financial' || d.source === 'deal') || []
+
+  // Documents are listing-scoped (financial_documents) or deal-scoped
+  // (deal_documents) — neither requires a deal to exist for the listing to
+  // show its uploaded/generated documents here, on purpose: a broker should
+  // be able to see and pre-share a listing's financials before a formal deal
+  // (LOI+) exists, and regardless of the listing's active/pending/sold status.
+  const loadAccess = useCallback(async (listingId: string) => {
+    const { data: deal } = await supabase.from('deals').select('id').eq('listing_id', listingId).maybeSingle()
+    setDealId(deal?.id || null)
+    setAccess(deal?.id ? await fetchClientAccess(deal.id) : [])
   }, [])
 
-  const toggleDocVisibility = async (doc: DealDocRow, key: 'visible_to_seller' | 'visible_to_buyer') => {
-    const next = !doc[key]
-    setDealDocs((prev) => prev.map((d) => (d.id === doc.id ? { ...d, [key]: next } : d)))
-    const { error } = await supabase.from('deal_documents').update({ [key]: next }).eq('id', doc.id)
-    if (error) toast('Could not update sharing (run sql/document_sharing_scope.sql)', 'error')
+  const toggleDocVisibility = async (doc: DocumentItem, key: 'visibleToSeller' | 'visibleToBuyer') => {
+    const patch = { [key]: !doc[key] } as { visibleToSeller?: boolean; visibleToBuyer?: boolean }
+    setAllGroups((prev) => prev.map((g) => (
+      g.parentId !== selected ? g : { ...g, documents: g.documents.map((d) => (d.id === doc.id ? { ...d, ...patch } : d)) }
+    )))
+    const result = await setDocumentVisibility(doc, patch)
+    if (!result.success) toast(result.error || 'Could not update sharing', 'error')
   }
 
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.from('deals').select('id, title, status')
-      setDeals((data || []) as DealOption[])
-      if (!selected && data && data.length) {
-        setSelected(data[0].id)
-        loadAccess(data[0].id)
-      }
+      const { data } = await supabase.from('listings').select('id, business_name, status').order('business_name')
+      const rows = (data || []) as ListingOption[]
+      setListings(rows)
+      if (!selected && rows.length) { setSelected(rows[0].id); loadAccess(rows[0].id) }
     })()
+    fetchDocumentGroups().then(setAllGroups).finally(() => setLoadingDocs(false))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const switchDeal = (id: string) => { setSelected(id); loadAccess(id) }
+  const switchListing = (id: string) => { setSelected(id); loadAccess(id) }
 
   const handleGrant = async () => {
-    if (!selected) { toast('Select a deal first', 'info'); return }
+    if (!selected) { toast('Select a listing first', 'info'); return }
     if (!name.trim() || !email.trim() || !email.includes('@')) { toast('Enter client name + valid email', 'info'); return }
     setBusy(true)
-    const created = await grantClientAccess({ dealId: selected, clientName: name.trim(), clientEmail: email.trim(), partyType })
+    // A listing may not have a deal yet (deals only auto-create once a
+    // listing goes active) — ensure one now instead of blocking the broker
+    // from sharing documents on an earlier-stage listing.
+    const deal = dealId ? { id: dealId } : await ensureDealForListing(selected)
+    if (!deal) { setBusy(false); toast('Could not set up this listing for sharing', 'error'); return }
+    setDealId(deal.id)
+    const created = await grantClientAccess({ dealId: deal.id, clientName: name.trim(), clientEmail: email.trim(), partyType })
     setBusy(false)
     if (created) {
       toast(`${partyType === 'buyer' ? 'Buyer' : 'Seller'} access granted — share the link below`)
@@ -97,12 +112,12 @@ function PortalManager() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Grant access */}
       <Card>
-        <CardHeader title="Grant client access" subtitle="Send a private portal link for a deal" />
+        <CardHeader title="Grant client access" subtitle="Send a private portal link for a listing's deal" />
         <div style={{ padding: 18, display: 'flex', flexDirection: 'column', gap: 12 }}>
           <div className="portal-grid" style={{ gap: 12 }}>
-            <select value={selected} onChange={(e) => switchDeal(e.target.value)} style={inputStyle}>
-              <option value="">Select a deal…</option>
-              {deals.map((d) => <option key={d.id} value={d.id}>{d.title || 'Untitled deal'} ({d.status})</option>)}
+            <select value={selected} onChange={(e) => switchListing(e.target.value)} style={inputStyle}>
+              <option value="">Select a listing…</option>
+              {listings.map((l) => <option key={l.id} value={l.id}>{l.business_name || 'Untitled listing'} ({l.status})</option>)}
             </select>
             <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Client name" style={inputStyle} />
             <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Client email" style={inputStyle} />
@@ -130,23 +145,28 @@ function PortalManager() {
         </div>
       </Card>
 
-      {/* Deal documents — control what the seller/buyer portal links can see */}
+      {/* Deal documents — control what the seller/buyer portal links can see.
+          Pulled from every financial (listing-scoped) and deal document for
+          this listing, regardless of the listing's status (active, pending,
+          sold) or whether a formal deal has been created yet. */}
       <Card>
-        <CardHeader title="Deal documents" subtitle="Choose what the seller and buyer can see through their portal link" />
+        <CardHeader title="Financial & deal documents" subtitle="Choose what the seller and buyer can see through their portal link" />
         <div style={{ padding: 12 }}>
-          {dealDocs.length === 0 ? (
-            <div style={{ padding: 16, color: 'var(--muted)', fontSize: 13.5 }}>No documents uploaded to this deal yet.</div>
+          {loadingDocs ? (
+            <div style={{ padding: 16, color: 'var(--muted)', fontSize: 13.5 }}>Loading documents…</div>
+          ) : dealDocs.length === 0 ? (
+            <div style={{ padding: 16, color: 'var(--muted)', fontSize: 13.5 }}>No financial or deal documents uploaded for this listing yet.</div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
               {dealDocs.map((d) => (
                 <div key={d.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', border: '1px solid var(--line)', borderRadius: 8 }}>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.file_name || 'Document'}</div>
+                    <div style={{ fontWeight: 600, fontSize: 13.5, color: 'var(--ink)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{d.fileName || 'Document'}</div>
                     <div style={{ fontSize: 12, color: 'var(--muted)' }}>{d.category || 'General'}</div>
                   </div>
                   <div style={{ display: 'flex', gap: 6, flexShrink: 0 }}>
-                    {shareChip('Seller', d.visible_to_seller, () => toggleDocVisibility(d, 'visible_to_seller'))}
-                    {shareChip('Buyer', d.visible_to_buyer, () => toggleDocVisibility(d, 'visible_to_buyer'))}
+                    {shareChip('Seller', d.visibleToSeller, () => toggleDocVisibility(d, 'visibleToSeller'))}
+                    {shareChip('Buyer', d.visibleToBuyer, () => toggleDocVisibility(d, 'visibleToBuyer'))}
                   </div>
                 </div>
               ))}

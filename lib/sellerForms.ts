@@ -13,6 +13,8 @@ import { supabase } from '@/lib/supabase/client'
 import { SELLER_FORM_SCHEMAS, buildListingAgreementClauses, type SellerFormType } from '@/lib/sellerFormSchemas'
 import type { FormValues } from '@/components/forms/DynamicFormFields'
 import { exportFilledFormToPdf } from '@/lib/formPdf'
+import { composeFilledPdf } from '@/lib/pdfOverlay'
+import { SELLER_FORM_TEMPLATES } from '@/lib/pdfOverlayMaps'
 import { FF_BUCKET } from '@/lib/storageBuckets'
 
 export interface SellerFormRow {
@@ -74,21 +76,33 @@ export async function completeSellerFormInApp(
   const { data: listing } = await supabase.from('listings').select('business_name').eq('id', listingId).maybeSingle()
   const signedAt = new Date().toISOString()
 
-  const bytes = exportFilledFormToPdf(
-    {
-      title: schema.title,
-      subtitle: (listing as any)?.business_name || 'Business Listing',
-      intro: schema.intro,
-      sections: schema.sections,
-      values: formData,
-      signerName: signerName || undefined,
-      signerTitle: signerTitle || undefined,
-      signedAt,
-      ipNote: 'Completed in-app by broker on behalf of signer.',
-      ...(formType === 'listing_agreement' ? { clauseTitle: 'Agreement Terms', clauseText: buildListingAgreementClauses(formData) } : {}),
-    },
-    { returnBytes: true },
-  ) as Uint8Array
+  const mapped = SELLER_FORM_TEMPLATES[formType]
+  let bytes: Uint8Array
+  if (mapped) {
+    // Fill the seller's real branded PDF (his actual Corporate/LLC Resolution,
+    // Marketing Agreement, etc.) instead of a from-scratch summary.
+    const templateBytes = await fetch(`/document-templates/${mapped.file}`).then((r) => r.arrayBuffer())
+    bytes = await composeFilledPdf(
+      [{ template: mapped.template, templateBytes, values: formData }],
+      { signerName: signerName || undefined, signerTitle: signerTitle || undefined, signedAt },
+    )
+  } else {
+    bytes = exportFilledFormToPdf(
+      {
+        title: schema.title,
+        subtitle: (listing as any)?.business_name || 'Business Listing',
+        intro: schema.intro,
+        sections: schema.sections,
+        values: formData,
+        signerName: signerName || undefined,
+        signerTitle: signerTitle || undefined,
+        signedAt,
+        ipNote: 'Completed in-app by broker on behalf of signer.',
+        ...(formType === 'listing_agreement' ? { clauseTitle: 'Agreement Terms', clauseText: buildListingAgreementClauses(formData) } : {}),
+      },
+      { returnBytes: true },
+    ) as Uint8Array
+  }
 
   const path = `seller-forms/${listingId}/${Date.now()}-${formType}.pdf`
   const { error: upErr } = await supabase.storage

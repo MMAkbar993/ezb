@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import crypto from 'crypto'
 import { createServerClient } from '@/lib/supabase/server'
-import { NDA_FORM_SECTIONS, BUYER_PROFILE_SECTIONS } from '@/lib/buyerFormSchemas'
-import { exportFilledFormToPdf } from '@/lib/formPdf'
+import { generateNdaProfilePdf } from '@/lib/buyerFormPdf.server'
 import { FF_BUCKET } from '@/lib/storageBuckets'
 
 // ---------------------------------------------------------------------------
@@ -62,32 +61,18 @@ export async function POST(req: NextRequest) {
   const userAgent = req.headers.get('user-agent') || null
   const signedAt = new Date().toISOString()
 
-  // Generate a filled NDA + Buyer Profile Form PDF for the broker's records.
-  // Contains the buyer's home address, driver's license/EIN, and net worth —
-  // goes in the private financial_docs bucket, never the public one. pdf_url
-  // stores the storage PATH; the broker dashboard resolves a signed URL on
-  // demand. Best-effort — a PDF failure should never block the buyer's unlock.
+  // Generate the buyer's REAL Confidentiality Agreement + Buyer Profile Form
+  // (his actual branded PDFs, filled in — not a re-typeset summary) for the
+  // broker's records. Contains the buyer's home address, driver's
+  // license/EIN, and net worth — goes in the private financial_docs bucket,
+  // never the public one. pdf_url stores the storage PATH; the broker
+  // dashboard resolves a signed URL on demand. Best-effort — a PDF failure
+  // should never block the buyer's unlock.
   let pdfPath: string | null = null
   try {
-    const bytes = exportFilledFormToPdf(
-      {
-        title: 'Confidentiality & Registration Agreement + Buyer Profile Form',
-        subtitle: listing.business_name || 'Business Listing',
-        sections: [
-          { title: 'Listing', fields: [
-            { key: '_listing_id', label: 'Business Listing ID No.', type: 'text' },
-            { key: '_business_category', label: 'Business Category', type: 'text' },
-          ] },
-          ...NDA_FORM_SECTIONS,
-          ...BUYER_PROFILE_SECTIONS,
-        ],
-        values: { _listing_id: listing.id, _business_category: listing.industry || '—', ...ndaFormData, ...buyerProfile },
-        signerName: name,
-        signedAt,
-        ipNote: `Signed from IP ${ip || 'unknown'}`,
-      },
-      { returnBytes: true },
-    ) as Uint8Array
+    const bytes = await generateNdaProfilePdf({
+      listingId, businessCategory: listing.industry, ndaFormData, buyerProfile, signerName: name, signedAt,
+    })
 
     const path = `nda-forms/${listingId}/${Date.now()}-${email.replace(/[^a-zA-Z0-9._-]/g, '_')}.pdf`
     const { error: upErr } = await svc.storage.from(FF_BUCKET).upload(path, Buffer.from(bytes), { contentType: 'application/pdf', upsert: false })
