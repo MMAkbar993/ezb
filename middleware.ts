@@ -40,8 +40,13 @@ const SECURITY_CONFIG: Partial<WebSecureConfig> = {
       fontSrc: ["'self'", 'data:'],
       objectSrc: ["'none'"],
       mediaSrc: ["'self'", 'https://*.supabase.co'],
-      // Training videos
-      frameSrc: ["'self'", 'https://www.youtube.com', 'https://player.vimeo.com', 'https://www.loom.com'],
+      // Training videos + PDF previews (Documents dashboard, Financial Files —
+      // both embed a Supabase signed storage URL in an <iframe>; without this,
+      // the browser enforces this page's own CSP against the iframe target and
+      // blocks it with "This content is blocked", even though the signed URL
+      // itself loads fine — confirmed via a direct fetch showing Supabase sets
+      // no framing-restriction headers of its own).
+      frameSrc: ["'self'", 'https://www.youtube.com', 'https://player.vimeo.com', 'https://www.loom.com', 'https://*.supabase.co'],
       frameAncestors: ["'none'"],
       baseUri: ["'self'"],
       formAction: ["'self'"],
