@@ -2,14 +2,21 @@ import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
 import { renderNewspaperHtml } from '@/lib/newspaper'
 import { requireUser, unauthorized } from '@/lib/apiAuth'
+import { sendEmail } from '@/lib/email'
 
 // ---------------------------------------------------------------------------
 // POST /api/newspaper/publish — distributes a published edition to all active
-// subscribers. Runs server-side with the service role so the email queue rows
-// (email_emails) are inserted even though subscribers are external (no
-// Supabase session) and the smtp send is attempted by the worker. Triggering
-// a send requires a signed-in broker session — subscribers themselves never
-// call this route.
+// subscribers. Runs server-side with the service role. Triggering a send
+// requires a signed-in broker session — subscribers themselves never call
+// this route.
+//
+// Previously this inserted straight into `email_emails` with
+// status:'queued' and then logged `newspaper_delivery_log.status:'sent'`
+// unconditionally — nothing ever actually attempted delivery (no worker
+// reads that queue), so every edition silently went nowhere while telling
+// the broker it was sent. Now it calls the real send path (lib/email.ts —
+// attempts SMTP when configured, degrades to an honestly-labeled queue
+// entry otherwise) and records what actually happened.
 // ---------------------------------------------------------------------------
 
 export const runtime = 'nodejs'
@@ -40,27 +47,34 @@ export async function POST(req: NextRequest) {
   const html = renderNewspaperHtml(edition, (articles || []) as any)
   const subject = `Concord Weekly — ${edition.issue_label || ''}`
 
-  let sent = 0, failed = 0
+  let delivered = 0, queued = 0, failed = 0
   for (const sub of (subs || [])) {
     const emailHtml = welcomeTop(sub) + html
-    const text = (articles || [])
-      .map((a) => `${a.section}: ${a.headline}\n${(a.body || '').replace(/\n/g, ' ')}`)
-      .join('\n\n')
-    const { error } = await SVC.from('email_emails').insert({
-      email_to: sub.email,
+    const result = await sendEmail({
+      to: sub.email,
       subject,
       html: emailHtml,
-      text,
-      kind: 'newspaper_weekly',
-      meta: { edition_id: editionId },
-      status: 'queued',
+      kind: 'generic',
+      meta: { edition_id: editionId, source: 'newspaper_weekly' },
     })
-    if (error) { failed++ ; continue }
-    await SVC.from('newspaper_delivery_log').insert({ edition_id: editionId, email: sub.email, status: 'sent' })
-    sent++
+    if (!result.ok) {
+      failed++
+      await SVC.from('newspaper_delivery_log').insert({ edition_id: editionId, email: sub.email, status: 'failed' })
+      continue
+    }
+    if (result.queued) queued++
+    else delivered++
+    await SVC.from('newspaper_delivery_log').insert({ edition_id: editionId, email: sub.email, status: result.queued ? 'queued' : 'sent' })
   }
 
-  return NextResponse.json({ ok: true, sent, failed, total: (subs || []).length })
+  return NextResponse.json({
+    ok: true,
+    delivered, queued, failed,
+    total: (subs || []).length,
+    note: queued > 0 && delivered === 0
+      ? 'SMTP is not configured yet — emails were queued but not actually delivered. Set SMTP_HOST/SMTP_USER/SMTP_PASS/SMTP_FROM and EMAIL_ENABLED=true to send for real.'
+      : undefined,
+  })
 }
 
 function welcomeTop(sub: any): string {

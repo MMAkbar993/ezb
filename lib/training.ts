@@ -79,6 +79,23 @@ export interface TrainingUpload {
   uploaded_at: string | null
 }
 
+// --- Current broker identity ---
+// Previously every training component (Dashboard/Module/Lesson/Upload) had
+// its own copy of a fake `getBrokerId()` stub that generated a random
+// "broker-xxxxxxxx" string into localStorage — never the real signed-in
+// user. Since training_progress/training_certificates/training_uploads all
+// have RLS requiring auth.uid() = broker_id, writes under that fake id
+// either failed RLS outright or (worse) silently wrote to a broker_id no
+// real account owns. This is the one real source of truth for "who is
+// filling out training right now."
+export async function getCurrentBrokerIdentity(): Promise<{ id: string; name: string | null; email: string | null }> {
+  const { data } = await supabase.auth.getUser()
+  const id = data.user?.id || ''
+  if (!id) return { id: '', name: null, email: null }
+  const { data: profile } = await supabase.from('profiles').select('full_name').eq('id', id).maybeSingle()
+  return { id, name: (profile as { full_name: string | null } | null)?.full_name || null, email: data.user?.email || null }
+}
+
 // --- Modules + lessons ---
 export async function fetchModules(): Promise<TrainingModule[]> {
   // Server-side route uses the service-role client to bypass RLS (training

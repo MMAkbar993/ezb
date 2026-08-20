@@ -42,10 +42,20 @@ export async function GET(req: NextRequest) {
   // financial_documents (listing-scoped), not deal_documents — resolve the
   // deal's listing_id and pull those in too, filtered by the same
   // visibility column, so buyers/sellers actually see their CIM/BOV here.
+  // Signed seller legal documents (seller_forms) and the buyer NDA + Buyer
+  // Profile Form (listing_nda_signatures) are also listing-scoped and were
+  // previously never surfaced in the portal at all — only source/generated
+  // financial files and manually-uploaded deal documents were, so a signed
+  // Marketing Agreement or LLC Resolution never showed up here for either
+  // party to download.
   const listingId = dealRes.data?.listing_id || null
-  const financialDocsRes = listingId
-    ? await SVC.from('financial_documents').select('*').eq('listing_id', listingId).eq(visibilityCol, true).order('uploaded_at', { ascending: false })
-    : { data: [] as any[] }
+  const [financialDocsRes, sellerFormsRes, buyerNdaRes] = listingId
+    ? await Promise.all([
+        SVC.from('financial_documents').select('*').eq('listing_id', listingId).eq(visibilityCol, true).order('uploaded_at', { ascending: false }),
+        SVC.from('seller_forms').select('id, form_type, pdf_url, signer_name, signed_at, status').eq('listing_id', listingId).eq('status', 'signed').not('pdf_url', 'is', null),
+        SVC.from('listing_nda_signatures').select('id, buyer_name, pdf_url, signed_at').eq('listing_id', listingId).not('pdf_url', 'is', null),
+      ])
+    : [{ data: [] as any[] }, { data: [] as any[] }, { data: [] as any[] }]
 
   // Resolve a fresh short-lived signed URL for documents uploaded to the
   // private financial_docs bucket (storage_path set); rows from before this
@@ -60,17 +70,40 @@ export async function GET(req: NextRequest) {
   )
   const financialDocuments = await Promise.all(
     ((financialDocsRes.data as any[]) || []).map(async (d) => {
+      if (!d.storage_path) return { ...d, source: 'financial' as const }
       const { data: signed } = await SVC.storage.from(FF_BUCKET).createSignedUrl(d.storage_path, 3600)
       return { ...d, file_url: signed?.signedUrl || d.file_url, source: 'financial' as const }
     })
   )
+  // Seller legal documents (visible to seller by default; shared with the
+  // buyer only via the same broker-controlled visibility toggle other
+  // documents use — no per-row visibility columns exist yet on seller_forms,
+  // so treat them as seller-only for now, matching the pre-portal default).
+  const sellerFormDocuments = party === 'seller'
+    ? await Promise.all(
+        ((sellerFormsRes.data as any[]) || []).map(async (d) => {
+          const { data: signed } = await SVC.storage.from(FF_BUCKET).createSignedUrl(d.pdf_url, 3600)
+          return { id: d.id, file_url: signed?.signedUrl || null, file_name: `${d.form_type.replace(/_/g, ' ')} (signed).pdf`, category: 'Legal Document', created_at: d.signed_at, source: 'seller_form' as const }
+        })
+      )
+    : []
+  // Buyer NDA + Buyer Profile Form — visible only to the buyer who signed it
+  // (and the seller doesn't need to see other buyers' financial disclosures).
+  const buyerNdaDocuments = party === 'buyer'
+    ? await Promise.all(
+        ((buyerNdaRes.data as any[]) || []).map(async (d) => {
+          const { data: signed } = await SVC.storage.from(FF_BUCKET).createSignedUrl(d.pdf_url, 3600)
+          return { id: d.id, file_url: signed?.signedUrl || null, file_name: `NDA + Buyer Profile — ${d.buyer_name}.pdf`, category: 'NDA + Buyer Profile', created_at: d.signed_at, source: 'buyer_form' as const }
+        })
+      )
+    : []
 
   return NextResponse.json({
     ok: true,
     clientName: access.client_name,
     partyType: party,
     deal: dealRes.data || null,
-    documents: [...financialDocuments, ...dealDocuments],
+    documents: [...financialDocuments, ...dealDocuments, ...sellerFormDocuments, ...buyerNdaDocuments],
     milestones: (milsRes.data || []).map((m) => ({
       title: m.title, date: m.due_date ? String(m.due_date) : undefined, status: m.status,
     })),

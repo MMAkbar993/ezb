@@ -93,8 +93,13 @@ function NewspaperDashboard() {
     try {
       const res = await authedFetch('/api/newspaper/publish', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ editionId: selectedId }) })
       const json = await res.json()
-      if (res.ok) toast(`Queued for ${json.sent} subscriber(s)` + (json.failed ? `, ${json.failed} failed` : ''), 'success')
-      else toast(json.error || 'Distribute failed', 'error')
+      if (res.ok) {
+        const parts = []
+        if (json.delivered) parts.push(`${json.delivered} sent`)
+        if (json.queued) parts.push(`${json.queued} queued (SMTP not configured)`)
+        if (json.failed) parts.push(`${json.failed} failed`)
+        toast(parts.join(', ') || 'No active subscribers', json.delivered > 0 || (!json.queued && !json.failed) ? 'success' : 'info')
+      } else toast(json.error || 'Distribute failed', 'error')
     } catch { toast('Distribute failed', 'error') }
     setBusy(false)
   }
@@ -203,7 +208,7 @@ function NewspaperDashboard() {
                   {delivery.length === 0 ? <p style={{ color: 'var(--muted)', fontSize: 13 }}>No deliveries recorded for this edition yet. Publish then click “Email subscribers”.</p> : (
                     delivery.map((d) => (
                       <div key={d.id} style={{ display: 'flex', gap: 10, padding: '8px 4px', borderBottom: '1px solid var(--line)', fontSize: 13 }}>
-                        <span style={{ color: d.status === 'sent' ? '#16a34a' : '#dc2626', fontWeight: 700 }}>{d.status}</span>
+                        <span style={{ color: d.status === 'sent' ? '#16a34a' : d.status === 'queued' ? '#b45309' : '#dc2626', fontWeight: 700 }}>{d.status}</span>
                         <span style={{ color: 'var(--ink)' }}>{d.email}</span>
                         <span style={{ color: 'var(--muted)', marginLeft: 'auto' }}>{d.created_at ? new Date(d.created_at).toLocaleString() : ''}</span>
                       </div>

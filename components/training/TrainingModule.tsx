@@ -7,7 +7,7 @@ import {
   type TrainingLesson,
   type TrainingProgress,
   type TrainingCertificate,
-  fetchModule, fetchLessons, fetchProgress, fetchCertificates, lessonModuleComplete,
+  fetchModule, fetchLessons, fetchProgress, fetchCertificates, lessonModuleComplete, getCurrentBrokerIdentity,
 } from '@/lib/training'
 import { LoadingState, EmptyState, Badge } from '@/components/ui'
 import TrainingProgressBar from './TrainingProgress'
@@ -21,7 +21,7 @@ export default function TrainingModule({ moduleId }: { moduleId: string }) {
 
   useEffect(() => {
     (async () => {
-      const brokerId = getBrokerId()
+      const { id: brokerId } = await getCurrentBrokerIdentity()
       // Load module + lessons independently so RLS-affected progress/cert
       // fetches (anon client) can't blank out the whole page on failure.
       let m: TrainingModuleType | null = null
@@ -112,14 +112,4 @@ export default function TrainingModule({ moduleId }: { moduleId: string }) {
       )}
     </div>
   )
-}
-
-// shared broker-id helper (mirrors TrainingDashboard)
-function getBrokerId(): string {
-  if (typeof window === 'undefined') return ''
-  const stored = window.localStorage.getItem('concord_broker_id')
-  if (stored) return stored
-  const id = 'broker-' + Math.random().toString(36).slice(2, 10)
-  window.localStorage.setItem('concord_broker_id', id)
-  return id
 }

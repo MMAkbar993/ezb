@@ -41,6 +41,12 @@ export interface OverlayTemplate {
   name: string
   fields: OverlayField[]
   signature?: SignatureSpot
+  // A second real signature block already printed on the template (e.g. the
+  // "CORPORATION/COMPANY" column next to "SELLER SIGNATURE" on the Corp/LLC
+  // Resolution and Seller Interview Form) — used for a second co-owner/
+  // co-seller when one is provided. Documents with only one signature block
+  // in real life (NDA, Buyer Profile) simply don't set this.
+  signature2?: SignatureSpot
 }
 
 export interface OverlaySection {
@@ -49,11 +55,21 @@ export interface OverlaySection {
   values: FormValues
 }
 
+export interface AdditionalSigner {
+  name: string
+  title?: string
+}
+
 export interface ComposeOptions {
   signerName?: string
   signerTitle?: string
   signedAt?: string
   ipNote?: string
+  // Co-sellers/co-owners beyond the primary signer. The first fills the
+  // template's own signature2 slot if it has one; any beyond that (or all of
+  // them, for a template with no second on-page slot) are never dropped —
+  // they're listed on an appended "Additional Signatures" page instead.
+  additionalSigners?: AdditionalSigner[]
 }
 
 const INK = rgb(0.13, 0.13, 0.18)
@@ -104,12 +120,16 @@ export async function composeFilledPdf(sections: OverlaySection[], opts: Compose
 
     // Reserved keys a field map can reference for a "Printed Name:" /
     // "Dated as of:" row elsewhere on the page, distinct from the styled
-    // signature line itself.
+    // signature line itself. _signer2_* mirrors this for a second co-seller
+    // when the template has a second real signature block for one.
+    const signer2 = opts.additionalSigners?.[0]
     const values: FormValues = {
       ...section.values,
       ...(opts.signedAt ? { _signed_date: new Date(opts.signedAt).toLocaleDateString('en-US') } : {}),
       ...(opts.signerName ? { _signer_name: opts.signerName } : {}),
       ...(opts.signerTitle ? { _signer_title: opts.signerTitle } : {}),
+      ...(signer2?.name ? { _signer2_name: signer2.name } : {}),
+      ...(signer2?.title ? { _signer2_title: signer2.title } : {}),
     }
 
     for (const field of section.template.fields) {
@@ -149,20 +169,35 @@ export async function composeFilledPdf(sections: OverlaySection[], opts: Compose
       }
     }
 
-    if (section.template.signature && opts.signerName) {
-      const sig = section.template.signature
-      const page = out.getPage(basePageIndex + sig.page)
-      page.drawText(opts.signerName, { x: sig.nameX, y: sig.nameY, size: 13, font: italicFont, color: INK })
-      if (opts.signedAt && sig.dateX !== undefined && sig.dateY !== undefined) {
-        const dateStr = new Date(opts.signedAt).toLocaleDateString('en-US')
-        page.drawText(dateStr, { x: sig.dateX, y: sig.dateY, size: 10, font: regularFont, color: INK })
+    const drawSignature = (spot: SignatureSpot, name: string, dateStr: string | null) => {
+      const page = out.getPage(basePageIndex + spot.page)
+      page.drawText(name, { x: spot.nameX, y: spot.nameY, size: 13, font: italicFont, color: INK })
+      if (dateStr && spot.dateX !== undefined && spot.dateY !== undefined) {
+        page.drawText(dateStr, { x: spot.dateX, y: spot.dateY, size: 10, font: regularFont, color: INK })
       }
-      if (sig.noteX !== undefined && sig.noteY !== undefined) {
+      if (spot.noteX !== undefined && spot.noteY !== undefined) {
         page.drawText(
           'Signed electronically — valid under the Pennsylvania Electronic Transactions Act (73 P.S. § 2260.101 et seq.) and the federal E-SIGN Act (15 U.S.C. § 7001 et seq.).',
-          { x: sig.noteX, y: sig.noteY, size: 6.5, font: regularFont, color: rgb(0.45, 0.45, 0.5) },
+          { x: spot.noteX, y: spot.noteY, size: 6.5, font: regularFont, color: rgb(0.45, 0.45, 0.5) },
         )
       }
+    }
+
+    const dateStr = opts.signedAt ? new Date(opts.signedAt).toLocaleDateString('en-US') : null
+
+    if (section.template.signature && opts.signerName) {
+      drawSignature(section.template.signature, opts.signerName, dateStr)
+    }
+    if (section.template.signature2 && signer2?.name) {
+      drawSignature(section.template.signature2, signer2.name, dateStr)
+    }
+
+    // Co-sellers beyond what the template's own signature blocks can hold
+    // (or all additional signers, for a template with no second on-page
+    // slot) are never dropped — listed on an appended page instead.
+    const overflowSigners = section.template.signature2 ? (opts.additionalSigners?.slice(1) || []) : (opts.additionalSigners || [])
+    if (overflowSigners.length) {
+      appendSignaturePage(out, regularFont, boldFont, section.template.name, overflowSigners, dateStr)
     }
 
     if (overflowNotes.length) {
@@ -171,6 +206,23 @@ export async function composeFilledPdf(sections: OverlaySection[], opts: Compose
   }
 
   return out.save()
+}
+
+function appendSignaturePage(doc: PDFDocument, font: PDFFont, boldFont: PDFFont, sourceName: string, signers: AdditionalSigner[], dateStr: string | null) {
+  const page = doc.addPage([612, 792])
+  let y = 740
+  page.drawText(`Additional Signatures — ${sourceName}`, { x: 56, y, size: 13, font: boldFont, color: INK })
+  y -= 30
+  for (const signer of signers) {
+    page.drawText(`Signature: ${signer.name}`, { x: 56, y, size: 12, font, color: INK })
+    y -= 18
+    page.drawText(`Printed Name: ${signer.name}`, { x: 56, y, size: 10, font, color: INK })
+    y -= 16
+    page.drawText(`Title: ${signer.title || '—'}`, { x: 56, y, size: 10, font, color: INK })
+    y -= 16
+    page.drawText(`Date: ${dateStr || '—'}`, { x: 56, y, size: 10, font, color: INK })
+    y -= 36
+  }
 }
 
 function appendContinuationPage(doc: PDFDocument, font: PDFFont, boldFont: PDFFont, sourceName: string, notes: string[]) {

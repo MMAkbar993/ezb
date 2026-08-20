@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   TrainingLesson, TrainingProgress, QuizQuestion,
-  fetchLesson, fetchProgress, fetchQuiz, markLessonComplete, ensureModuleCertificate,
+  fetchLesson, fetchProgress, fetchQuiz, markLessonComplete, ensureModuleCertificate, getCurrentBrokerIdentity,
 } from '@/lib/training'
 import { LoadingState, EmptyState, Badge } from '@/components/ui'
 import { useToast } from '@/components/ui/Toast'
@@ -21,7 +21,7 @@ export default function TrainingLessonView({ moduleId, lessonId }: { moduleId: s
 
   useEffect(() => {
     (async () => {
-      const brokerId = getBrokerId()
+      const { id: brokerId } = await getCurrentBrokerIdentity()
       // Load the lesson (+ quiz) independently so the RLS-affected anon
       // progress fetch can't blank out the whole page when it fails.
       let l: TrainingLesson | null = null
@@ -55,13 +55,11 @@ export default function TrainingLessonView({ moduleId, lessonId }: { moduleId: s
 
   const handleQuizPass = async (score: number) => {
     try {
-      const brokerId = getBrokerId()
+      const { id: brokerId, name: brokerName, email: brokerEmail } = await getCurrentBrokerIdentity()
       await markLessonComplete(brokerId, lesson.id, score >= 80 ? 5 : 4)
       const m = await import('@/lib/training')
       const lessons = await m.fetchLessons(lesson.module_id)
       const prog = await m.fetchProgress(brokerId)
-      const brokerName = (window.localStorage.getItem('concord_broker_name') || '').trim()
-      const brokerEmail = (window.localStorage.getItem('concord_broker_email') || '').trim()
 
       // If this lesson completes the module, issue the certificate server-side
       // (writes with service role + fires the certificate email + QR code).
@@ -159,13 +157,4 @@ function embedVideo(url: string) {
   } catch {
     return url
   }
-}
-
-function getBrokerId(): string {
-  if (typeof window === 'undefined') return ''
-  const stored = window.localStorage.getItem('concord_broker_id')
-  if (stored) return stored
-  const id = 'broker-' + Math.random().toString(36).slice(2, 10)
-  window.localStorage.setItem('concord_broker_id', id)
-  return id
 }

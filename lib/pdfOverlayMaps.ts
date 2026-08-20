@@ -108,14 +108,23 @@ export const SELLER_INTERVIEW_TEMPLATE: OverlayTemplate = {
     { key: 'excluded_other_1', page: 1, x: 495, y: 207.2, fontSize: 9 },
     { key: 'excluded_other_2', page: 1, x: 495, y: 189.2, fontSize: 9 },
     { key: 'liabilities_to_be_paid', page: 1, x: 50, y: 100, kind: 'multiline', maxWidth: 520, maxLines: 2, fontSize: 9.5 },
-    // Signature page — "Corporation/Company" printed name (business entity),
-    // full signature block on "Seller Signature".
-    { key: 'legal_entity_name', page: 2, x: 375, y: 538.7, fontSize: 9.5 },
+    // Signature page — "CORPORATION/COMPANY" column (left) is the second
+    // co-seller slot (see signature2 below); "SELLER SIGNATURE" column
+    // (right) is the primary signer's printed name + title.
+    { key: '_signer_name', page: 2, x: 375, y: 538.7, fontSize: 9.5 },
+    { key: '_signer_title', page: 2, x: 340, y: 519.3, fontSize: 9.5 },
+    { key: '_signer2_name', page: 2, x: 115, y: 538.7, fontSize: 9.5 },
+    { key: '_signer2_title', page: 2, x: 80, y: 519.3, fontSize: 9.5 },
   ],
   signature: {
     page: 2,
     nameX: 375, nameY: 558.2,
     dateX: 375, dateY: 499.9,
+  },
+  signature2: {
+    page: 2,
+    nameX: 115, nameY: 558.2,
+    dateX: 80, dateY: 499.9,
   },
 }
 
@@ -129,15 +138,22 @@ export const CORP_RESOLUTION_TEMPLATE: OverlayTemplate = {
     { key: 'meeting_consent_date', page: 0, x: 180, y: 513.6, fontSize: 9.5 },
     { key: 'county_state_of_meeting', page: 0, x: 460, y: 513.6, fontSize: 9.5 },
     { key: 'authorized_person_full_name', page: 0, x: 50, y: 480, fontSize: 9.5 },
-    // "Seller Signature" column printed name/title (the "Corporation" column
-    // is left blank — the two columns are redundant for a single signer).
+    // "SELLER SIGNATURE" column (right) — primary signer's printed name/title.
     { key: 'authorized_officer_full_name', page: 0, x: 375, y: 111.1, fontSize: 9.5 },
     { key: 'officer_title', page: 0, x: 340, y: 91.6, fontSize: 9.5 },
+    // "CORPORATION" column (left) — second co-seller slot, when provided.
+    { key: '_signer2_name', page: 0, x: 115, y: 111.1, fontSize: 9.5 },
+    { key: '_signer2_title', page: 0, x: 80, y: 91.6, fontSize: 9.5 },
   ],
   signature: {
     page: 0,
     nameX: 375, nameY: 130.5,
     dateX: 340, dateY: 72.2,
+  },
+  signature2: {
+    page: 0,
+    nameX: 115, nameY: 130.5,
+    dateX: 80, dateY: 72.2,
   },
 }
 
@@ -151,13 +167,22 @@ export const LLC_RESOLUTION_TEMPLATE: OverlayTemplate = {
     { key: 'meeting_consent_date', page: 0, x: 180, y: 513.6, fontSize: 9.5 },
     { key: 'county_state_of_meeting', page: 0, x: 460, y: 513.6, fontSize: 9.5 },
     { key: 'authorized_person_full_name', page: 0, x: 50, y: 480, fontSize: 9.5 },
+    // "SELLER SIGNATURE" column (right) — primary signer's printed name/title.
     { key: 'managing_member_full_name', page: 0, x: 375, y: 111.1, fontSize: 9.5 },
     { key: 'member_title', page: 0, x: 340, y: 91.6, fontSize: 9.5 },
+    // "COMPANY NAME" column (left) — second co-seller slot, when provided.
+    { key: '_signer2_name', page: 0, x: 115, y: 111.1, fontSize: 9.5 },
+    { key: '_signer2_title', page: 0, x: 80, y: 91.6, fontSize: 9.5 },
   ],
   signature: {
     page: 0,
     nameX: 375, nameY: 130.5,
     dateX: 340, dateY: 72.2,
+  },
+  signature2: {
+    page: 0,
+    nameX: 115, nameY: 130.5,
+    dateX: 80, dateY: 72.2,
   },
 }
 

@@ -2,19 +2,8 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { createUpload, fetchModules, type TrainingModule } from '@/lib/training'
+import { createUpload, fetchModules, getCurrentBrokerIdentity, type TrainingModule } from '@/lib/training'
 import { Card, CardHeader, LoadingState, EmptyState, Badge } from '@/components/ui'
-
-// Matches the broker-id stub used by TrainingDashboard / TrainingModule so
-// uploads are attributed to the same local profile.
-function getBrokerId(): string {
-  if (typeof window === 'undefined') return ''
-  const stored = window.localStorage.getItem('concord_broker_id')
-  if (stored) return stored
-  const id = 'broker-' + Math.random().toString(36).slice(2, 10)
-  window.localStorage.setItem('concord_broker_id', id)
-  return id
-}
 
 export default function TrainingUploadPage() {
   const [modules, setModules] = useState<TrainingModule[]>([])
@@ -46,8 +35,9 @@ export default function TrainingUploadPage() {
     }
     setSaving(true)
     try {
+      const { id: brokerId } = await getCurrentBrokerIdentity()
       await createUpload({
-        broker_id: getBrokerId(),
+        broker_id: brokerId,
         title: title.trim(),
         file_url: fileUrl.trim(),
         file_type: fileType,

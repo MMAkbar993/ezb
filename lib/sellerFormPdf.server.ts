@@ -1,6 +1,6 @@
 import { readFile } from 'fs/promises'
 import path from 'path'
-import { composeFilledPdf } from '@/lib/pdfOverlay'
+import { composeFilledPdf, type AdditionalSigner } from '@/lib/pdfOverlay'
 import { SELLER_FORM_TEMPLATES } from '@/lib/pdfOverlayMaps'
 import { SELLER_FORM_SCHEMAS, buildListingAgreementClauses, type SellerFormType } from '@/lib/sellerFormSchemas'
 import { exportFilledFormToPdf } from '@/lib/formPdf'
@@ -20,6 +20,7 @@ export async function generateSellerFormPdf(input: {
   signerName: string
   signerTitle: string
   signedAt: string
+  additionalSigners?: AdditionalSigner[]
 }): Promise<Uint8Array> {
   const mapped = SELLER_FORM_TEMPLATES[input.formType]
 
@@ -27,7 +28,7 @@ export async function generateSellerFormPdf(input: {
     const buf = await readFile(path.join(process.cwd(), 'public', 'document-templates', mapped.file))
     return composeFilledPdf(
       [{ template: mapped.template, templateBytes: new Uint8Array(buf), values: input.formData }],
-      { signerName: input.signerName, signerTitle: input.signerTitle, signedAt: input.signedAt },
+      { signerName: input.signerName, signerTitle: input.signerTitle, signedAt: input.signedAt, additionalSigners: input.additionalSigners },
     )
   }
 

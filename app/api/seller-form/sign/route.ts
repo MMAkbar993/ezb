@@ -33,6 +33,11 @@ export async function POST(req: NextRequest) {
   const formData = (body?.formData && typeof body.formData === 'object') ? body.formData : {}
   const signerName = String(body?.signerName || '').trim()
   const signerTitle = String(body?.signerTitle || '').trim()
+  const additionalSigners = Array.isArray(body?.additionalSigners)
+    ? body.additionalSigners
+        .map((s: any) => ({ name: String(s?.name || '').trim(), title: String(s?.title || '').trim() }))
+        .filter((s: { name: string }) => s.name)
+    : []
 
   if (!listingId || !token || !signerName) {
     return NextResponse.json({ ok: false, error: 'Name and signature are required.' }, { status: 400 })
@@ -63,7 +68,7 @@ export async function POST(req: NextRequest) {
   try {
     const bytes = await generateSellerFormPdf({
       formType: row.form_type as SellerFormType, businessName: listing?.business_name || null,
-      formData, signerName, signerTitle, signedAt,
+      formData, signerName, signerTitle, signedAt, additionalSigners,
     })
 
     const path = `seller-forms/${listingId}/${Date.now()}-${row.form_type}.pdf`
@@ -78,6 +83,7 @@ export async function POST(req: NextRequest) {
     .from('seller_forms')
     .update({
       form_data: formData, status: 'signed', signer_name: signerName, signer_title: signerTitle || null,
+      additional_signers: additionalSigners,
       signed_at: signedAt, ip_address: ip, user_agent: userAgent, pdf_url: pdfPath, updated_at: signedAt,
     })
     .eq('id', row.id)

@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import {
   TrainingModule, TrainingProgress, TrainingCertificate, TrainingUpload,
-  fetchModules, fetchProgress, fetchCertificates, fetchUploads,
+  fetchModules, fetchProgress, fetchCertificates, fetchUploads, getCurrentBrokerIdentity,
 } from '@/lib/training'
 import { Card, CardHeader, StatCard, LoadingState, EmptyState, Badge } from '@/components/ui'
 
@@ -35,9 +35,10 @@ export default function TrainingDashboard() {
         console.warn('Aux training fetch failed (non-fatal):', e)
         return fallback
       })
+      const { id: brokerId } = await getCurrentBrokerIdentity()
       const [p, c, u] = await Promise.all([
-        safe(fetchProgress(getBrokerId()), []),
-        safe(fetchCertificates(getBrokerId()), []),
+        safe(fetchProgress(brokerId), []),
+        safe(fetchCertificates(brokerId), []),
         safe(fetchUploads(), []),
       ])
       setProgress(p)
@@ -155,16 +156,4 @@ function ProgressBar({ pct, height = 10 }: { pct: number; height?: number }) {
 function fileIcon(t: string) {
   const map: Record<string, string> = { pdf: '📕', video: '🎬', doc: '📝', xlsx: '📊', ppt: '📽️' }
   return map[t] || '📄'
-}
-
-// NOTE: replace with real current-user profile id passed from the page for
-// multi-broker correctness. Falls back to a local-storage stub so the demo
-// renders without auth wiring.
-export function getBrokerId(): string {
-  if (typeof window === 'undefined') return ''
-  const stored = window.localStorage.getItem('concord_broker_id')
-  if (stored) return stored
-  const id = 'broker-' + Math.random().toString(36).slice(2, 10)
-  window.localStorage.setItem('concord_broker_id', id)
-  return id
 }

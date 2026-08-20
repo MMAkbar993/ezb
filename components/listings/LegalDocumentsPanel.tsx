@@ -10,7 +10,7 @@
 
 import { useEffect, useState } from 'react'
 import { SELLER_FORM_SCHEMAS, SELLER_FORM_ORDER, type SellerFormType } from '@/lib/sellerFormSchemas'
-import { fetchSellerForms, saveSellerFormDraft, sendSellerFormToSeller, completeSellerFormInApp, type SellerFormRow } from '@/lib/sellerForms'
+import { fetchSellerForms, saveSellerFormDraft, sendSellerFormToSeller, completeSellerFormInApp, type SellerFormRow, type AdditionalSigner } from '@/lib/sellerForms'
 import DynamicFormFields, { type FormValues } from '@/components/forms/DynamicFormFields'
 import { useToast } from '@/components/ui/Toast'
 import { getSignedFileUrl } from '@/lib/financialFiles'
@@ -104,6 +104,12 @@ function SellerFormEditorModal({
   )
   const [signerName, setSignerName] = useState('')
   const [signerTitle, setSignerTitle] = useState('')
+  const [additionalSigners, setAdditionalSigners] = useState<AdditionalSigner[]>(initial?.additional_signers || [])
+
+  const addSignerRow = () => setAdditionalSigners((s) => [...s, { name: '', title: '' }])
+  const updateSignerRow = (i: number, patch: Partial<AdditionalSigner>) =>
+    setAdditionalSigners((s) => s.map((row, idx) => (idx === i ? { ...row, ...patch } : row)))
+  const removeSignerRow = (i: number) => setAdditionalSigners((s) => s.filter((_, idx) => idx !== i))
 
   const set = (key: string, value: string | boolean) => setValues((v) => ({ ...v, [key]: value }))
 
@@ -146,7 +152,8 @@ function SellerFormEditorModal({
     }
     setBusy(true)
     try {
-      await completeSellerFormInApp(listingId, formType, values, signerName.trim(), signerTitle.trim())
+      const cleanSigners = additionalSigners.map((s) => ({ name: s.name.trim(), title: s.title?.trim() || '' })).filter((s) => s.name)
+      await completeSellerFormInApp(listingId, formType, values, signerName.trim(), signerTitle.trim(), cleanSigners)
       toast('Completed — PDF generated', 'success')
       onSaved()
     } catch (e: any) {
@@ -167,7 +174,7 @@ function SellerFormEditorModal({
 
         {initial?.status === 'signed' && (
           <div style={{ background: '#e8f7ee', color: '#16a34a', padding: '10px 14px', borderRadius: 8, marginBottom: 16, fontSize: 13, fontWeight: 600 }}>
-            ✓ Signed by {initial.signer_name} on {initial.signed_at ? new Date(initial.signed_at).toLocaleDateString() : ''} — fields below are read-only.
+            ✓ Signed by {[initial.signer_name, ...(initial.additional_signers || []).map((s) => s.name)].filter(Boolean).join(', ')} on {initial.signed_at ? new Date(initial.signed_at).toLocaleDateString() : ''} — fields below are read-only.
           </div>
         )}
 
@@ -193,6 +200,24 @@ function SellerFormEditorModal({
                 <input className="input" value={signerTitle} onChange={(e) => setSignerTitle(e.target.value)} placeholder="e.g. Owner, Member, President" />
               </div>
             </div>
+
+            {/* Multiple sellers/co-owners — a business can have more than one
+                seller signing the same document. */}
+            {additionalSigners.map((s, i) => (
+              <div key={i} className="grid-2" style={{ gap: 12, marginTop: 10, alignItems: 'end' }}>
+                <div>
+                  <label className="label">Co-Seller {i + 2} Full Name</label>
+                  <input className="input" value={s.name} onChange={(e) => updateSignerRow(i, { name: e.target.value })} placeholder="e.g. John Seller" />
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input className="input" value={s.title || ''} onChange={(e) => updateSignerRow(i, { title: e.target.value })} placeholder="Title / Capacity" style={{ flex: 1 }} />
+                  <button type="button" className="btn btn-ghost" onClick={() => removeSignerRow(i)} title="Remove this co-seller">✕</button>
+                </div>
+              </div>
+            ))}
+            <button type="button" className="btn btn-ghost" style={{ marginTop: 10, fontSize: 12.5, padding: '6px 12px' }} onClick={addSignerRow}>
+              + Add another seller
+            </button>
           </div>
         )}
 

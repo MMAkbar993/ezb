@@ -89,6 +89,10 @@ export async function POST(req: NextRequest) {
   const body = await req.json().catch(() => ({}))
   const { brokerId, moduleId, moduleTitle, brokerName, brokerEmail, template } = body
   if (!brokerId || !moduleId) return NextResponse.json({ ok: false, error: 'missing params' }, { status: 400 })
+  // A caller can only issue a certificate for themselves — matches the RLS
+  // predicate (auth.uid() = broker_id) this table would enforce if written
+  // through the anon client instead of the service role.
+  if (brokerId !== auth.user.id) return NextResponse.json({ ok: false, error: 'Cannot issue a certificate for another broker.' }, { status: 403 })
   const svc = SVC
   if (!svc) return NextResponse.json({ ok: false, error: 'not configured' }, { status: 503 })
 

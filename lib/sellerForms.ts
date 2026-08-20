@@ -13,9 +13,11 @@ import { supabase } from '@/lib/supabase/client'
 import { SELLER_FORM_SCHEMAS, buildListingAgreementClauses, type SellerFormType } from '@/lib/sellerFormSchemas'
 import type { FormValues } from '@/components/forms/DynamicFormFields'
 import { exportFilledFormToPdf } from '@/lib/formPdf'
-import { composeFilledPdf } from '@/lib/pdfOverlay'
+import { composeFilledPdf, type AdditionalSigner } from '@/lib/pdfOverlay'
 import { SELLER_FORM_TEMPLATES } from '@/lib/pdfOverlayMaps'
 import { FF_BUCKET } from '@/lib/storageBuckets'
+
+export type { AdditionalSigner }
 
 export interface SellerFormRow {
   id: string
@@ -26,6 +28,7 @@ export interface SellerFormRow {
   share_token: string | null
   signer_name: string | null
   signer_title: string | null
+  additional_signers: AdditionalSigner[]
   signed_at: string | null
   pdf_url: string | null
   created_at: string
@@ -71,6 +74,7 @@ export async function completeSellerFormInApp(
   formData: FormValues,
   signerName: string,
   signerTitle: string,
+  additionalSigners: AdditionalSigner[] = [],
 ): Promise<SellerFormRow> {
   const schema = SELLER_FORM_SCHEMAS[formType]
   const { data: listing } = await supabase.from('listings').select('business_name').eq('id', listingId).maybeSingle()
@@ -84,7 +88,7 @@ export async function completeSellerFormInApp(
     const templateBytes = await fetch(`/document-templates/${mapped.file}`).then((r) => r.arrayBuffer())
     bytes = await composeFilledPdf(
       [{ template: mapped.template, templateBytes, values: formData }],
-      { signerName: signerName || undefined, signerTitle: signerTitle || undefined, signedAt },
+      { signerName: signerName || undefined, signerTitle: signerTitle || undefined, signedAt, additionalSigners },
     )
   } else {
     bytes = exportFilledFormToPdf(
@@ -117,6 +121,7 @@ export async function completeSellerFormInApp(
       {
         listing_id: listingId, form_type: formType, form_data: formData,
         status: 'signed', signer_name: signerName || null, signer_title: signerTitle || null,
+        additional_signers: additionalSigners,
         signed_at: signedAt, pdf_url: path, created_by: userData?.user?.id || null, updated_at: signedAt,
       },
       { onConflict: 'listing_id,form_type' },
