@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js'
 import { NextRequest, NextResponse } from 'next/server'
-import { renderNewspaperHtml } from '@/lib/newspaper'
+import { renderNewspaperHtml } from '@/lib/newspaperRender'
 import { requireUser, unauthorized } from '@/lib/apiAuth'
 import { sendEmail } from '@/lib/email'
 
