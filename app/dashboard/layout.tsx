@@ -30,9 +30,17 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         router.replace('/auth')
         return
       }
-      setChecked(true)
       const uid = data.session.user.id
-      const { data: prof } = await supabase.from('profiles').select('role').eq('id', uid).maybeSingle()
+      const { data: prof } = await supabase.from('profiles').select('role, status').eq('id', uid).maybeSingle()
+      // A deactivated account (admin-toggled in Team & Access) must not reach
+      // any dashboard page — RLS/role checks alone don't stop it, since a
+      // deactivated agent still has valid role-scoped access otherwise.
+      if (prof?.status === 'inactive') {
+        await supabase.auth.signOut()
+        if (!cancelled) router.replace('/auth?inactive=1')
+        return
+      }
+      setChecked(true)
       if (!cancelled) {
         setRole((prof?.role as Role) || 'agent')
         setRoleLoading(false)

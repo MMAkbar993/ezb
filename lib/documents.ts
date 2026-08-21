@@ -481,10 +481,17 @@ export async function uploadDocument(
 
   // Insert into the appropriate table
   if (target.source === 'deal') {
+    // category was previously dropped here even though the upload modal lets
+    // the broker pick one — deal_documents has no CHECK constraint on it
+    // (unlike listing_documents), so the UI label is stored as-is. This also
+    // matters for the client-portal's buyer-visibility filter, which now
+    // relies on this column to keep legal-category uploads (NDA, Purchase
+    // Agreement, Marketing Agreement) out of buyer-facing "financial access."
     const { error: insertError } = await supabase.from('deal_documents').insert({
       deal_id: target.parentId,
       file_name: file.name,
       file_url: publicUrl,
+      category,
       uploaded_by: (await supabase.auth.getUser()).data.user?.id || null,
       uploaded_by_role: 'broker',
     })

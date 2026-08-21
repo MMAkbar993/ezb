@@ -31,6 +31,9 @@ export default function TrainingCertificate({
   verificationCode,
   verifyUrl,
   defaultTemplate = 'gold',
+  agencyName = 'EZ Business Advisors',
+  signerName = 'Rabin Timsina',
+  signerTitle = 'CEO',
 }: {
   brokerName?: string
   moduleTitle?: string
@@ -39,6 +42,9 @@ export default function TrainingCertificate({
   verificationCode?: string | null
   verifyUrl?: string
   defaultTemplate?: CertTemplate
+  agencyName?: string
+  signerName?: string
+  signerTitle?: string
 }) {
   const [template, setTemplate] = useState<CertTemplate>(defaultTemplate)
   const t = TEMPLATES[template]
@@ -92,13 +98,29 @@ export default function TrainingCertificate({
     ctx.font = '700 28px Georgia, serif'
     ctx.fillText(moduleTitle, w / 2, 530)
     ctx.fillStyle = t.body
+    ctx.font = 'italic 16px Georgia, serif'
+    ctx.fillText(`and is hereby recognized as a Business Intermediary of ${agencyName}`, w / 2, 562)
     ctx.font = '16px Georgia, serif'
-    ctx.fillText(`${moduleId ? `Module ${moduleId} · ` : ''}Issued ${date || '—'}`, w / 2, 580)
+    ctx.fillText(`${moduleId ? `Module ${moduleId} · ` : ''}Issued ${date || '—'}`, w / 2, 594)
     if (verificationCode) {
       ctx.font = '13px Georgia, serif'
       ctx.fillStyle = t.body
-      ctx.fillText(`Verify: ${verificationCode} · concord.deal`, w / 2, 608)
+      ctx.fillText(`Verify: ${verificationCode} · concord.deal`, w / 2, 618)
     }
+
+    // signature line (bottom-left, balancing the seal)
+    ctx.textAlign = 'left'
+    const sigX = 110, sigY = h - 130
+    ctx.strokeStyle = t.inner
+    ctx.lineWidth = 1
+    ctx.beginPath(); ctx.moveTo(sigX, sigY); ctx.lineTo(sigX + 260, sigY); ctx.stroke()
+    ctx.fillStyle = t.header
+    ctx.font = 'italic 700 26px Georgia, serif'
+    ctx.fillText(signerName, sigX + 4, sigY - 10)
+    ctx.fillStyle = t.body
+    ctx.font = '13px Georgia, serif'
+    ctx.fillText(`${signerTitle}, ${agencyName}`, sigX, sigY + 20)
+    ctx.textAlign = 'center'
 
     // seal
     const cx = w - 180, cy = h - 150
@@ -158,7 +180,10 @@ export default function TrainingCertificate({
         </div>
         <div style={{ fontSize: 14, color: t.body, marginBottom: 8 }}>has completed</div>
         <div style={{ fontSize: 21, fontWeight: 700, color: t.accent, fontFamily: 'Georgia, serif' }}>{moduleTitle}</div>
-        <div style={{ fontSize: 13, color: t.body, marginTop: 22 }}>
+        <div style={{ fontSize: 13, color: t.body, marginTop: 10, fontStyle: 'italic' }}>
+          and is hereby recognized as a Business Intermediary of {agencyName}
+        </div>
+        <div style={{ fontSize: 13, color: t.body, marginTop: 10 }}>
           {moduleId && `Module ${moduleId} · `}Issued {date || '—'}
         </div>
 
@@ -188,6 +213,16 @@ export default function TrainingCertificate({
         >
           <span style={{ fontWeight: 700, fontSize: 12 }}>CONCORD</span>
           <span style={{ fontSize: 8, letterSpacing: 1 }}>CERTIFIED</span>
+        </div>
+
+        {/* signature line */}
+        <div style={{ position: 'absolute', left: 40, bottom: 40, textAlign: 'left', width: 200 }}>
+          <div style={{ fontFamily: 'Georgia, serif', fontStyle: 'italic', fontWeight: 700, fontSize: 22, color: t.header }}>
+            {signerName}
+          </div>
+          <div style={{ borderTop: '1px solid ' + t.inner, marginTop: 2, paddingTop: 4, fontSize: 12, color: t.body }}>
+            {signerTitle}, {agencyName}
+          </div>
         </div>
       </div>
 

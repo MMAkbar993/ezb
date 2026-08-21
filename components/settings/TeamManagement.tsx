@@ -12,6 +12,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase/client'
 import { getAccessToken } from '@/lib/financialFiles'
 import { useRole, Role } from '@/lib/auth/RoleContext'
+import { fetchCertificates, fetchProgress, type TrainingCertificate, type TrainingProgress } from '@/lib/training'
 
 interface TeamMember {
   id: string
@@ -19,6 +20,11 @@ interface TeamMember {
   full_name: string | null
   role: Role
   status: string | null
+}
+
+interface TrainingSummary {
+  completedLessons: number
+  certificates: number
 }
 
 interface Invite {
@@ -74,7 +80,9 @@ export default function TeamManagement() {
   const [myId, setMyId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [savingId, setSavingId] = useState<string | null>(null)
+  const [statusSavingId, setStatusSavingId] = useState<string | null>(null)
   const [error, setError] = useState('')
+  const [training, setTraining] = useState<Record<string, TrainingSummary>>({})
 
   const [invites, setInvites] = useState<Invite[]>([])
   const [inviteEmail, setInviteEmail] = useState('')
@@ -92,8 +100,23 @@ export default function TeamManagement() {
       .select('id, email, full_name, role, status')
       .order('created_at', { ascending: true })
     if (err) { setError(err.message); setLoading(false); return }
-    setMembers((data as TeamMember[]) || [])
+    const list = (data as TeamMember[]) || []
+    setMembers(list)
     setLoading(false)
+    loadTrainingSummaries(list)
+  }
+
+  // Per-member training/certification status — requires the admin-read RLS
+  // policy on training_certificates/training_progress (sql/team_admin_training_visibility.sql);
+  // without it these just come back empty for anyone but the member themself.
+  const loadTrainingSummaries = async (list: TeamMember[]) => {
+    const entries = await Promise.all(list.map(async (m): Promise<[string, TrainingSummary]> => {
+      const [progress, certs]: [TrainingProgress[], TrainingCertificate[]] = await Promise.all([
+        fetchProgress(m.id), fetchCertificates(m.id),
+      ])
+      return [m.id, { completedLessons: progress.filter((p) => p.completed).length, certificates: certs.length }]
+    }))
+    setTraining(Object.fromEntries(entries))
   }
 
   const loadInvites = async () => {
@@ -172,6 +195,27 @@ export default function TeamManagement() {
     }
   }
 
+  const changeStatus = async (targetId: string, status: 'active' | 'inactive') => {
+    setStatusSavingId(targetId)
+    setError('')
+    try {
+      const token = await getAccessToken()
+      if (!token) throw new Error('You need to be signed in.')
+      const res = await fetch('/api/team/set-status', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + token },
+        body: JSON.stringify({ targetId, status }),
+      })
+      const data = await res.json()
+      if (!data.ok) throw new Error(data.error || 'Failed to update status')
+      setMembers((prev) => prev.map((m) => (m.id === targetId ? { ...m, status } : m)))
+    } catch (e: any) {
+      setError(e?.message || 'Failed to update status')
+    } finally {
+      setStatusSavingId(null)
+    }
+  }
+
   return (
     <div style={CARD}>
       <div style={S.sectionTitle}>Team &amp; Access</div>
@@ -185,31 +229,51 @@ export default function TeamManagement() {
       ) : members.length === 0 ? (
         <div style={{ color: 'var(--muted)', fontSize: 14 }}>No team members found.</div>
       ) : (
-        members.map((m) => (
+        members.map((m) => {
+          const t = training[m.id]
+          const isInactive = m.status === 'inactive'
+          return (
           <div key={m.id} style={S.row}>
             <div>
-              <div style={{ fontFamily: 'Georgia, serif', fontWeight: 600, color: 'var(--navy)', fontSize: 14.5 }}>
+              <div style={{ fontFamily: 'Georgia, serif', fontWeight: 600, color: isInactive ? 'var(--muted)' : 'var(--navy)', fontSize: 14.5 }}>
                 {m.full_name || m.email || m.id}
                 {m.id === myId && <span style={{ color: 'var(--muted)', fontWeight: 400, fontSize: 12.5 }}> (you)</span>}
+                {isInactive && <span style={{ color: '#b00020', fontWeight: 700, fontSize: 11, marginLeft: 8, textTransform: 'uppercase', letterSpacing: 0.5 }}>Deactivated</span>}
               </div>
               {m.email && <div style={{ fontSize: 12.5, color: 'var(--muted)' }}>{m.email}</div>}
+              <div style={{ fontSize: 11.5, color: 'var(--muted)', marginTop: 2 }}>
+                🎓 {t ? `${t.completedLessons} lessons complete · ${t.certificates} certificate${t.certificates === 1 ? '' : 's'}` : 'loading…'}
+              </div>
             </div>
-            {m.id === myId ? (
-              <span style={{ fontSize: 13, color: 'var(--muted)' }}>{ROLE_LABEL[m.role]}</span>
-            ) : (
-              <select
-                style={S.select}
-                value={m.role}
-                disabled={savingId === m.id}
-                onChange={(e) => changeRole(m.id, e.target.value as Role)}
-              >
-                <option value="agent">Agent</option>
-                <option value="broker">Broker</option>
-                <option value="admin">Admin / Owner</option>
-              </select>
-            )}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+              {m.id === myId ? (
+                <span style={{ fontSize: 13, color: 'var(--muted)' }}>{ROLE_LABEL[m.role]}</span>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    style={{ ...S.linkBtn, color: isInactive ? '#1e7e34' : '#b00020', borderColor: isInactive ? '#1e7e34' : '#f0c0c0' }}
+                    disabled={statusSavingId === m.id}
+                    onClick={() => changeStatus(m.id, isInactive ? 'active' : 'inactive')}
+                  >
+                    {statusSavingId === m.id ? '…' : isInactive ? 'Activate' : 'Deactivate'}
+                  </button>
+                  <select
+                    style={S.select}
+                    value={m.role}
+                    disabled={savingId === m.id}
+                    onChange={(e) => changeRole(m.id, e.target.value as Role)}
+                  >
+                    <option value="agent">Agent</option>
+                    <option value="broker">Broker</option>
+                    <option value="admin">Admin / Owner</option>
+                  </select>
+                </>
+              )}
+            </div>
           </div>
-        ))
+          )
+        })
       )}
 
       {error && <div style={S.err}>⚠️ {error}</div>}

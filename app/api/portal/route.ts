@@ -32,11 +32,30 @@ export async function GET(req: NextRequest) {
   const visibilityCol = party === 'buyer' ? 'visible_to_buyer' : 'visible_to_seller'
 
   const [dealRes, dealDocsRes, milsRes, msgsRes] = await Promise.all([
-    SVC.from('deals').select('*').eq('id', dealId).single(),
+    // Explicit column allowlist, not select('*') — `deals` also has a free-
+    // text `notes` column (broker-internal, never rendered by any dashboard
+    // UI today) that must never reach a client regardless of what gets
+    // typed into it in the future. Keep this in sync with PortalDeal
+    // (lib/clientPortal.ts) — that's the full set the portal UI ever reads.
+    SVC.from('deals').select('id, listing_id, title, status, purchase_price, created_at, updated_at').eq('id', dealId).single(),
     SVC.from('deal_documents').select('*').eq('deal_id', dealId).eq(visibilityCol, true).order('created_at', { ascending: false }),
     SVC.from('due_diligence_items').select('title, due_date, status').eq('deal_id', dealId),
     SVC.from('portal_messages').select('*').eq('deal_id', dealId).order('created_at', { ascending: true }),
   ])
+
+  // A buyer's "financial access" must only ever surface financial
+  // documents — the visible_to_buyer toggle alone doesn't distinguish a
+  // legal deal_documents upload (NDA, Purchase Agreement, Marketing
+  // Agreement) from a genuinely financial one, so a broker flipping that
+  // toggle on the wrong row would leak legal paperwork to a buyer. Legal
+  // seller_forms are already correctly seller-only below; this closes the
+  // same gap for deal_documents specifically. Sellers see their own
+  // documents regardless of category — that's their own information, not a
+  // leak — so this filter only applies to the buyer party.
+  const LEGAL_DEAL_CATEGORIES = new Set(['NDA', 'Purchase Agreement', 'Marketing Agreement'])
+  const visibleDealDocs = party === 'buyer'
+    ? (dealDocsRes.data || []).filter((d) => !LEGAL_DEAL_CATEGORIES.has(d.category))
+    : (dealDocsRes.data || [])
 
   // The real generated CIM/BOV/financial documents live in
   // financial_documents (listing-scoped), not deal_documents — resolve the
@@ -62,7 +81,7 @@ export async function GET(req: NextRequest) {
   // fix (public 'documents' bucket, no storage_path) keep their stored
   // file_url as-is for backward compatibility.
   const dealDocuments = await Promise.all(
-    (dealDocsRes.data || []).map(async (d) => {
+    visibleDealDocs.map(async (d) => {
       if (!d.storage_path) return { ...d, source: 'deal' as const }
       const { data: signed } = await SVC.storage.from(FF_BUCKET).createSignedUrl(d.storage_path, 3600)
       return { ...d, file_url: signed?.signedUrl || d.file_url, source: 'deal' as const }

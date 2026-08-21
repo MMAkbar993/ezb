@@ -10,15 +10,20 @@ import StatusBadge from './StatusBadge'
 import { STATUS_STYLE } from '@/lib/workflow'
 import { queueAutoPosts } from '@/lib/services/social'
 import { supabase } from '@/lib/supabase/client'
+import { useRole } from '@/lib/auth/RoleContext'
+
+interface TeamOption { id: string; full_name: string | null; email: string | null }
 
 export default function ListingsDashboard() {
   const toast = useToast()
+  const { isBrokerOrAdmin } = useRole()
   const [listings, setListings] = useState<Listing[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editing, setEditing] = useState<Listing | null>(null)
   const [statusFilter, setStatusFilter] = useState('all')
   const [workflows, setWorkflows] = useState<Record<string, { current_step: number; completed_at: string | null }>>({})
+  const [team, setTeam] = useState<TeamOption[]>([])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -45,6 +50,25 @@ export default function ListingsDashboard() {
   }, [toast])
 
   useEffect(() => { load() }, [load])
+
+  useEffect(() => {
+    if (!isBrokerOrAdmin) return
+    supabase.from('profiles').select('id, full_name, email').order('full_name').then(({ data }) => {
+      setTeam(data || [])
+    })
+  }, [isBrokerOrAdmin])
+
+  const handleAgentChange = async (listing: Listing, agentId: string) => {
+    // listings.agent_id is NOT NULL, so the picker only ever offers real team members.
+    if (!agentId) return
+    setListings((p) => p.map((l) => (l.id === listing.id ? { ...l, agent_id: agentId } : l)))
+    try {
+      await updateListing(listing.id, { agent_id: agentId })
+      toast('Assigned agent updated', 'success')
+    } catch (e: any) {
+      toast(e.message, 'error')
+    }
+  }
 
   const handleSubmit = async (input: Partial<Listing>) => {
     if (editing) {
@@ -216,6 +240,21 @@ export default function ListingsDashboard() {
                 >
                   {LISTING_STATUSES.map((s) => <option key={s} value={s}>{STATUS_STYLE[s]?.label || s}</option>)}
                 </select>
+
+                {/* Assigned agent (admin/broker only — RLS permits reassignment) */}
+                {isBrokerOrAdmin && (
+                  <select
+                    className="select"
+                    value={listing.agent_id || ''}
+                    onChange={(e) => handleAgentChange(listing, e.target.value)}
+                    style={{ marginTop: 8, fontSize: 13 }}
+                  >
+                    {!listing.agent_id && <option value="">Unassigned</option>}
+                    {team.map((m) => (
+                      <option key={m.id} value={m.id}>{m.full_name || m.email || m.id}</option>
+                    ))}
+                  </select>
+                )}
               </div>
             </Card>
           ))}

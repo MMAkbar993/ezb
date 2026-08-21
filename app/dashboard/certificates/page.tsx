@@ -24,6 +24,7 @@ interface VerifiedResult {
 // provides a public code-verification tool, and lists certified brokers.
 export default function CertificatesPage() {
   const [brokerId, setBrokerId] = useState<string | null>(null)
+  const [brokerName, setBrokerName] = useState<string>('Broker')
   const [certs, setCerts] = useState<Cert[]>([])
   const [modules, setModules] = useState<Record<string, string>>({})
   const [loading, setLoading] = useState(true)
@@ -32,8 +33,12 @@ export default function CertificatesPage() {
   const [checking, setChecking] = useState(false)
 
   useEffect(() => {
-    const id = window.localStorage.getItem('concord_broker_id')
-    setBrokerId(id || null)
+    (async () => {
+      const { getCurrentBrokerIdentity } = await import('@/lib/training')
+      const identity = await getCurrentBrokerIdentity()
+      setBrokerId(identity.id || null)
+      setBrokerName(identity.name || identity.email || 'Broker')
+    })()
   }, [])
 
   useEffect(() => {
@@ -86,7 +91,7 @@ export default function CertificatesPage() {
         certs.map((c) => (
           <TrainingCertificate
             key={c.id}
-            brokerName={brokerId ? '' : 'Broker'}
+            brokerName={brokerName}
             moduleTitle={modules[c.module_id] || 'Training Module'}
             moduleId={c.module_id.slice(0, 8)}
             issuedAt={c.issued_at}

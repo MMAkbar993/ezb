@@ -74,6 +74,10 @@ export interface Listing {
   is_franchise: boolean | null
   website: string | null
   website_confidential: boolean | null
+  // Manual BizBuySell workflow (no API integration — entered by hand)
+  bizbuysell_uploaded: boolean | null
+  bizbuysell_uploaded_by: string | null
+  bizbuysell_uploaded_at: string | null
 }
 
 export type ListingInput = Partial<Omit<Listing, 'id' | 'created_at' | 'updated_at'>>

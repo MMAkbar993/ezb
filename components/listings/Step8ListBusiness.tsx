@@ -3,11 +3,14 @@
 import { useEffect, useState } from 'react'
 import { StepShell, stepField, stepLabel, stepBtn } from '@/components/listings/StepShell'
 import { publishListing, completeStep } from '@/lib/workflow'
-import { fetchListing } from '@/lib/listings'
+import { fetchListing, updateListing } from '@/lib/listings'
 import {
   fetchPublicListingSettings, submitForReview, approveListing, revertToDraft,
   publishToWebsite, unpublishFromWebsite, PublicListingSettings, ReviewStage, LocationExposure,
 } from '@/lib/publicListing'
+import { exportBizBuySellPdf, fetchListingContact } from '@/lib/bizbuysell'
+import { useRole } from '@/lib/auth/RoleContext'
+import { supabase } from '@/lib/supabase/client'
 
 const LOCATION_EXPOSURE_LABEL: Record<LocationExposure, string> = {
   general: 'General area only (e.g. "Charlotte, NC") — most confidential',
@@ -29,9 +32,13 @@ const STAGE_LABEL: Record<ReviewStage, string> = {
 const STAGE_ORDER: ReviewStage[] = ['draft', 'internal_review', 'approved']
 
 export default function Step8ListBusiness({ listingId, onNext }: { listingId: string; onNext: () => void }) {
+  const { isBrokerOrAdmin } = useRole()
   const [listing, setListing] = useState<any>(null)
   const [pushResult, setPushResult] = useState<string>('')
   const [busy, setBusy] = useState(false)
+  const [uid, setUid] = useState<string | null>(null)
+  const [bbsBusy, setBbsBusy] = useState(false)
+  const [bbsMsg, setBbsMsg] = useState('')
 
   const [pub, setPub] = useState<PublicListingSettings | null>(null)
   const [pubBusy, setPubBusy] = useState(false)
@@ -56,6 +63,40 @@ export default function Step8ListBusiness({ listingId, onNext }: { listingId: st
     })
   }
   useEffect(() => { load(); loadPublic() }, [listingId])
+  useEffect(() => { supabase.auth.getUser().then(({ data }) => setUid(data.user?.id || null)) }, [])
+
+  const canManageBbs = isBrokerOrAdmin || (!!uid && uid === listing?.agent_id)
+
+  const downloadBizBuySellDetails = async () => {
+    if (!listing) return
+    setBbsBusy(true)
+    setBbsMsg('')
+    try {
+      const contact = await fetchListingContact(listing.agent_id)
+      exportBizBuySellPdf(listing, contact)
+    } catch {
+      setBbsMsg('Could not generate the listing details file.')
+    } finally {
+      setBbsBusy(false)
+    }
+  }
+
+  const toggleBizBuySellUploaded = async (checked: boolean) => {
+    setBbsBusy(true)
+    setBbsMsg('')
+    try {
+      await updateListing(listingId, {
+        bizbuysell_uploaded: checked,
+        bizbuysell_uploaded_by: checked ? uid : null,
+        bizbuysell_uploaded_at: checked ? new Date().toISOString() : null,
+      })
+      await load()
+    } catch {
+      setBbsMsg('Could not update BizBuySell upload status.')
+    } finally {
+      setBbsBusy(false)
+    }
+  }
 
   const publish = async () => {
     setBusy(true)
@@ -130,6 +171,39 @@ export default function Step8ListBusiness({ listingId, onNext }: { listingId: st
       <div style={{ marginTop: 16, fontSize: 12.5, color: 'var(--muted)' }}>
         Publishing sets the listing status to <strong>Active</strong> and pushes it to BizBuySell. Once a buyer signs a letter of intent, the status will automatically advance to Pending Sale.
       </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Manual BizBuySell upload — BizBuySell has no API integration here;   */}
+      {/* the client's explicit instruction is a manual copy-in workflow.     */}
+      {/* ------------------------------------------------------------------ */}
+      {canManageBbs && (
+        <div style={{ marginTop: 28, paddingTop: 24, borderTop: '1px solid var(--line)' }}>
+          <h4 style={{ margin: '0 0 4px', fontSize: 16, fontFamily: 'Georgia, serif', color: 'var(--navy)' }}>Manual BizBuySell Upload</h4>
+          <p style={{ margin: '0 0 16px', fontSize: 12.5, color: 'var(--muted)' }}>
+            BizBuySell listings are entered by hand — download the listing details, copy them into your BizBuySell account, then mark it uploaded here.
+          </p>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button onClick={downloadBizBuySellDetails} disabled={bbsBusy} style={stepBtn(true)}>
+              ⬇ Download BizBuySell Listing Details
+            </button>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: 'var(--text)', cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={!!listing?.bizbuysell_uploaded}
+                disabled={bbsBusy}
+                onChange={(e) => toggleBizBuySellUploaded(e.target.checked)}
+              />
+              Uploaded to BizBuySell
+            </label>
+          </div>
+          {listing?.bizbuysell_uploaded && (
+            <div style={{ marginTop: 8, fontSize: 12.5, color: '#16a34a' }}>
+              ✓ Marked uploaded{listing.bizbuysell_uploaded_at ? ` on ${new Date(listing.bizbuysell_uploaded_at).toLocaleDateString()}` : ''}.
+            </div>
+          )}
+          {bbsMsg && <div style={{ marginTop: 8, fontSize: 13, color: '#dc2626' }}>{bbsMsg}</div>}
+        </div>
+      )}
 
       {/* ------------------------------------------------------------------ */}
       {/* Public website — internal review + publish, separate from BizBuySell */}

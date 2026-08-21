@@ -11,6 +11,7 @@ import {
   type SocialPlatform,
 } from '@/lib/services/social'
 import { Card, CardHeader, Badge, LoadingState, EmptyState } from '@/components/ui'
+import PrepareSocialPost from '@/components/social/PrepareSocialPost'
 
 const DEV_AGENT_ID = '00000000-0000-0000-0000-000000000000'
 
@@ -87,6 +88,8 @@ function SocialDashboard() {
           <p style={{ color: 'var(--muted)', marginTop: 6 }}>Auto-posts, engagement, and manual publishing.</p>
         </div>
       </div>
+
+      <PrepareSocialPost />
 
       {/* Summary stats */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px,1fr))', gap: 14, marginBottom: 20 }}>
