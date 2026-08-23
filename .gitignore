@@ -21,8 +21,6 @@ yarn-error.log*
 .pnpm-debug.log*
 
 # local env files
-.env
-.env.local
 .env.*.local
 !.env.example
 
@@ -40,5 +38,7 @@ next-env.d.ts
 .env.local.save
 .env.*.save
 .env.local.safe
-.env.production
-.env.staging
+branch_structure.json
+temp_auto_push.bat
+temp_interactive_push.bat
+config.bat
