@@ -8,7 +8,7 @@ import ListingFields, { ListingFormState, buildInitialFormState, buildListingPay
 interface ListingFormModalProps {
   listing: Listing | null
   onClose: () => void
-  onSubmit: (input: Partial<Listing>) => Promise<void>
+  onSubmit: (input: Partial<Listing>, publishNow?: boolean) => Promise<void>
 }
 
 export default function ListingFormModal({ listing, onClose, onSubmit }: ListingFormModalProps) {
@@ -17,6 +17,7 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
   const [error, setError] = useState('')
   const [imageUrls, setImageUrls] = useState<string[]>(listing?.image_urls || [])
   const [primaryImageUrl, setPrimaryImageUrl] = useState<string | null>(listing?.primary_image_url || null)
+  const [publishNow, setPublishNow] = useState(false)
 
   const set = <K extends keyof ListingFormState>(k: K, v: ListingFormState[K]) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -27,7 +28,7 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
     setSubmitting(true)
     setError('')
     try {
-      await onSubmit(buildListingPayload(form))
+      await onSubmit(buildListingPayload(form), publishNow)
     } catch (err: any) {
       setError(err.message || 'Failed to save listing')
       setSubmitting(false)
@@ -59,6 +60,13 @@ export default function ListingFormModal({ listing, onClose, onSubmit }: Listing
           )}
 
           <ListingFields form={form} set={set} />
+
+          {!listing && (
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: 'var(--text)', cursor: 'pointer', padding: '10px 12px', background: 'var(--cream)', borderRadius: 8, marginBottom: 16 }}>
+              <input type="checkbox" checked={publishNow} onChange={(e) => setPublishNow(e.target.checked)} />
+              🌐 Publish to public website now (uses default privacy settings — you can change these anytime from the listing's workflow)
+            </label>
+          )}
 
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
             <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>

@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation'
 import AppShell from '@/components/layout/AppShell'
 import { ToastProvider, useToast } from '@/components/ui/Toast'
 import { createListing, type Listing } from '@/lib/listings'
+import { quickPublish } from '@/lib/publicListing'
 import { startWorkflow } from '@/lib/workflow'
 import { matchBuyerLeads, UnifiedLead } from '@/lib/leads2'
 import MatchedBuyersModal from '@/components/leads/MatchedBuyersModal'
@@ -40,6 +41,7 @@ function NewListingForm() {
   const [matched, setMatched] = useState<UnifiedLead[] | null>(null)
   const [justCreated, setJustCreated] = useState<Listing | null>(null)
   const [stage, setStage] = useState<'form' | 'financials'>('form')
+  const [publishNow, setPublishNow] = useState(false)
 
   const set = <K extends keyof ListingFormState>(k: K, v: ListingFormState[K]) => setForm((f) => ({ ...f, [k]: v }))
 
@@ -53,6 +55,10 @@ function NewListingForm() {
       // Status field default — it's published later via the workflow's own
       // Step 8, not chosen up front here.
       const listing = await createListing({ ...buildListingPayload(form), status: 'draft' })
+      if (publishNow) {
+        const res = await quickPublish(listing.id)
+        toast(res.ok ? 'Published to public website' : res.error || 'Publish failed', res.ok ? 'success' : 'error')
+      }
       // Auto-match buyer leads to this listing's industry/business type.
       const matches = await matchBuyerLeads(form.industry || null)
       setJustCreated(listing)
@@ -126,6 +132,11 @@ function NewListingForm() {
         <div style={{ padding: '28px 32px', background: '#fff', border: '1px solid var(--line)', borderRadius: 14 }}>
           <ListingFields form={form} set={set} showStatus={false} />
         </div>
+
+        <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13.5, color: 'var(--text)', cursor: 'pointer', padding: '12px 16px', background: '#fff', border: '1px solid var(--line)', borderRadius: 10, marginTop: 16 }}>
+          <input type="checkbox" checked={publishNow} onChange={(e) => setPublishNow(e.target.checked)} />
+          🌐 Publish to public website now (default privacy settings — change anytime from Step 8 of the workflow)
+        </label>
 
         <button type="submit" disabled={busy} style={{ width: '100%', marginTop: 20, padding: '14px', background: 'var(--navy)', color: '#fff', border: 'none', borderRadius: 10, fontSize: 15, fontWeight: 700, cursor: 'pointer', opacity: busy ? 0.6 : 1 }}>
           {busy ? 'Creating…' : 'Create listing & start workflow →'}

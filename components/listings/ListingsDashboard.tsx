@@ -9,6 +9,7 @@ import ListingFormModal from './ListingFormModal'
 import StatusBadge from './StatusBadge'
 import { STATUS_STYLE } from '@/lib/workflow'
 import { queueAutoPosts } from '@/lib/services/social'
+import { quickPublish } from '@/lib/publicListing'
 import { supabase } from '@/lib/supabase/client'
 import { useRole } from '@/lib/auth/RoleContext'
 
@@ -70,13 +71,17 @@ export default function ListingsDashboard() {
     }
   }
 
-  const handleSubmit = async (input: Partial<Listing>) => {
+  const handleSubmit = async (input: Partial<Listing>, publishNow?: boolean) => {
     if (editing) {
       await updateListing(editing.id, input)
       toast('Listing updated', 'success')
     } else {
       const created = await createListing(input)
       toast('Listing created', 'success')
+      if (publishNow) {
+        const res = await quickPublish(created.id)
+        toast(res.ok ? 'Published to public website' : res.error || 'Publish failed', res.ok ? 'success' : 'error')
+      }
       // Auto-post to connected social platforms on new listing upload (fire-and-forget).
       try {
         const { data } = await supabase.auth.getUser()
