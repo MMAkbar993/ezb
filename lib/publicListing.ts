@@ -147,6 +147,22 @@ export async function publishToWebsite(
   return { ok: true }
 }
 
+/**
+ * One-shot "publish this new listing to the public website now" — runs the
+ * review_stage gate (draft -> internal_review -> approved) and the publish
+ * write in sequence with sensible defaults (not anonymous, financials
+ * hidden, general location only, not featured). Used by the "Publish to
+ * public website" checkbox on listing creation, so a broker doesn't have to
+ * navigate the full Step 8 review UI just to say yes/no up front. The
+ * granular controls in Step 8 (StepDetail's Public Website panel) remain
+ * available afterward to change any of these settings or unpublish.
+ */
+export async function quickPublish(listingId: string): Promise<{ ok: boolean; error?: string }> {
+  if (!(await submitForReview(listingId))) return { ok: false, error: 'Failed to submit for internal review' }
+  if (!(await approveListing(listingId))) return { ok: false, error: 'Failed to approve listing' }
+  return publishToWebsite(listingId, {})
+}
+
 export async function unpublishFromWebsite(listingId: string): Promise<boolean> {
   const { error } = await supabase
     .from('public_listings')
